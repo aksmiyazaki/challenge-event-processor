@@ -1,0 +1,22 @@
+{
+  "name": "ProducerToProcessor",
+  "namespace": "com.github.aksmiyazaki",
+  "type": "record",
+  "doc": "Simple schema that defines messages exchanged between an event producer and an event processor.",
+  "fields": [
+    {
+      "name": "origin_service",
+      "type": "com.github.aksmiyazaki.ServiceSchema",
+      "doc": "Service id that originates this message."
+    },
+    {
+      "name": "destination_service_type",
+      "type": "string",
+      "doc": "Service type that should receive this message."
+    },
+    {
+      "name": "payload",
+      "type": "string"
+    }
+  ]
+}
