@@ -1,9 +1,6 @@
-jq '. | {schema: tojson}' service.avsc | \
-curl -X POST http://localhost:8081/subjects/service-value/versions \
--H "Content-Type: application/vnd.schemaregistry.v1+json" \
--d @-
+#!/bin/sh
 
-jq '. | {schema: tojson}' producer-to-processor.avsc | \
+jq '. | {schema: tojson}' $1 | \
 curl -X POST http://localhost:8081/subjects/producer.to.processor-value/versions \
 -H "Content-Type: application/vnd.schemaregistry.v1+json" \
 -d @-

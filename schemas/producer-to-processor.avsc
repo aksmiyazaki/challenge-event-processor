@@ -5,9 +5,14 @@
   "doc": "Simple schema that defines messages exchanged between an event producer and an event processor.",
   "fields": [
     {
-      "name": "origin_service",
-      "type": "com.github.aksmiyazaki.ServiceSchema",
-      "doc": "Service id that originates this message."
+      "name": "origin_service_id",
+      "type": "string",
+      "doc": "A unique identifier of the service."
+    },
+    {
+      "name": "origin_service_type",
+      "type": "string",
+      "doc": "Type of the referred service."
     },
     {
       "name": "destination_service_type",
