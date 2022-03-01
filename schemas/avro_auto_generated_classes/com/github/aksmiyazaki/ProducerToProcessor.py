@@ -3,7 +3,7 @@
 """ avro python class for file: ProducerToProcessor """
 
 import json
-from schemas.avro_auto_generated_classes.helpers import *
+from schemas.avro_auto_generated_classes.helpers import default_json_serialize, todict
 from typing import Union
 
 
@@ -32,6 +32,11 @@ class ProducerToProcessor(object):
                 "doc": "Service type that should receive this message."
             },
             {
+                "name": "event_timestamp",
+                "type": "long",
+                "logicalType": "timestamp-millis"
+            },
+            {
                 "name": "payload",
                 "type": "string"
             }
@@ -56,6 +61,8 @@ class ProducerToProcessor(object):
         self.set_origin_service_type(obj.get('origin_service_type', None))
 
         self.set_destination_service_type(obj.get('destination_service_type', None))
+
+        self.set_event_timestamp(obj.get('event_timestamp', None))
 
         self.set_payload(obj.get('payload', None))
 
@@ -94,6 +101,17 @@ class ProducerToProcessor(object):
     def get_destination_service_type(self) -> str:
 
         return self.destination_service_type
+
+    def set_event_timestamp(self, value: int) -> None:
+
+        if isinstance(value, int):
+            self.event_timestamp = value
+        else:
+            raise TypeError("field 'event_timestamp' should be type int")
+
+    def get_event_timestamp(self) -> int:
+
+        return self.event_timestamp
 
     def set_payload(self, value: str) -> None:
 

@@ -12,5 +12,5 @@ local-setup:
 
 .PHONY: local-register-schemas
 local-register-schemas:
-	./schemas/register-schema.sh ./schemas/producer-to-processor.avsc
+	./schemas/avro_schemas/register-schema.sh ./schemas/avro_schemas/producer-to-processor.avsc
 

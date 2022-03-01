@@ -20,6 +20,11 @@
       "doc": "Service type that should receive this message."
     },
     {
+      "name": "event_timestamp",
+      "type": "long",
+      "logicalType" : "timestamp-millis"
+    },
+    {
       "name": "payload",
       "type": "string"
     }
