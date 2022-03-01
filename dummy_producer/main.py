@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import sys
 
 from dummy_producer.kafka_producer.kafka_producer import KafkaProducer, SupportedSerializers
-from schemas.avro_auto_generated_classes.com.github.aksmiyazaki.ProducerToProcessor import ProducerToProcessor
+from schemas.avro_auto_generated_classes.service_messages import ProducerToProcessor
 
 
 def main():

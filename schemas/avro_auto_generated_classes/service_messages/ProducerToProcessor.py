@@ -12,7 +12,7 @@ class ProducerToProcessor(object):
     schema = """
     {
         "name": "ProducerToProcessor",
-        "namespace": "com.github.aksmiyazaki",
+        "namespace": "service_messages",
         "type": "record",
         "doc": "Simple schema that defines messages exchanged between an event producer and an event processor.",
         "fields": [
