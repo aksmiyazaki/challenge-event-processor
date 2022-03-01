@@ -32,7 +32,7 @@ class KafkaProducer:
         self.__key_serialization_schema = None
         self.__value_serialization_schema = None
         self.__producer_config = {}
-        self.producer = None
+        self.__producer = None
         self.initialize()
 
     def initialize(self):

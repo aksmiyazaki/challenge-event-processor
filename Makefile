@@ -8,6 +8,10 @@ local-docker-compose-teardown:
 
 .PHONY: local-setup
 local-setup:
+	pip install -r requirements-development.txt
+
+.PHONY: production-setup
+production-setup:
 	pip install -r requirements.txt
 
 .PHONY: local-register-schemas

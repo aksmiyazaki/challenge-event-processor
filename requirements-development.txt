@@ -1,0 +1,6 @@
+requests==2.27.1
+fastavro==1.4.9
+confluent-kafka==1.8.2
+avro-to-python==0.3.3
+markupsafe==2.0.1
+pytest=7.0.1
