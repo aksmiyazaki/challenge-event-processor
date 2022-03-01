@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 import sys
 
-from dummy_producer.kafka_producer.kafka_producer import KafkaProducer, SupportedSerializers
+from kafka.producer.boilerplate import KafkaProducer, SupportedSerializers
 from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import ProducerToProcessor
 
 

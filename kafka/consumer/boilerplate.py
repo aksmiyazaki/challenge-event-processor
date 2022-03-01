@@ -55,7 +55,8 @@ class KafkaConsumer:
         self.__consumer_config["value.deserializer"] = value_deserializer
         self.__consumer_config["bootstrap.servers"] = self.__bootstrap_servers
         self.__consumer_config["group.id"] = self.__group_id
-        self.__consumer_config['auto.offset.reset'] = 'earliest'
+        self.__consumer_config["auto.offset.reset"] = "earliest"
+        self.__consumer_config["enable.auto.commit"] = False
         self.__consumer = DeserializingConsumer(self.__consumer_config)
 
     def fetch_deserialization_schema(self, serializer_type, subject_name):
@@ -90,3 +91,6 @@ class KafkaConsumer:
             print(f"Error on message {msg.error()}")
         else:
             return msg
+
+    def terminate(self):
+        self.__consumer.close()
