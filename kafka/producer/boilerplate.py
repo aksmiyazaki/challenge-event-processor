@@ -52,7 +52,7 @@ class KafkaProducer:
         self.__producer_config["bootstrap.servers"] = self.__bootstrap_servers
         self.__producer_config["key.serializer"] = key_serializer
         self.__producer_config["value.serializer"] = value_serializer
-        self.producer = SerializingProducer(self.__producer_config)
+        self.__producer = SerializingProducer(self.__producer_config)
 
     def fetch_serialization_schema(self, serializer_type, subject_name):
         if serializer_type == SupportedSerializers.AVRO_SERIALIZER:
@@ -72,10 +72,10 @@ class KafkaProducer:
             return AvroSerializer(self.__schema_registry_client, schema.schema.schema_str)
 
     def asynchronous_send(self, key, value, topic, callback_after_delivery):
-        self.producer.produce(topic=topic,
-                              key=key,
-                              value=value,
-                              on_delivery=callback_after_delivery)
+        self.__producer.produce(topic=topic,
+                                key=key,
+                                value=value,
+                                on_delivery=callback_after_delivery)
 
     def terminate(self):
-        self.producer.flush()
+        self.__producer.flush()

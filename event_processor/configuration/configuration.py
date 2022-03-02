@@ -31,8 +31,16 @@ class EventProcessorConfiguration:
                             help="Kafka Consumer group ID.",
                             required=True)
 
+        parser.add_argument("-batch_size_to_commit_offsets",
+                            dest="batch_size_to_commit_offsets",
+                            type=int,
+                            help="Amount of messages to process before commiting offset (will commit on multiples"
+                                 " of that number. ex: 10 will commit after the 10, 20, 30, .... messages.",
+                            required=True)
+
         parsed_args = parser.parse_args(args_list)
         self.kafka_bootstrap_server = parsed_args.kafka_bootstrap_server
         self.kafka_source_topic = parsed_args.source_topic
         self.schema_registry_url = parsed_args.schema_registry_url
         self.group_id = parsed_args.group_id
+        self.batch_size_to_commit_offsets = parsed_args.batch_size_to_commit_offsets

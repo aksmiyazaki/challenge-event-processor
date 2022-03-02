@@ -1,6 +1,6 @@
 from enum import Enum
 
-from confluent_kafka import DeserializingConsumer
+from confluent_kafka import DeserializingConsumer, KafkaError, KafkaException
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import StringDeserializer
@@ -19,7 +19,9 @@ class KafkaConsumer:
                  value_deserializer_type,
                  value_deserializer_subject,
                  group_id,
-                 bootstrap_servers):
+                 bootstrap_servers,
+                 callback_commit_offsets):
+        self.__commit_offsets_callback = callback_commit_offsets
         self.__group_id = group_id
         self.__bootstrap_servers = bootstrap_servers
         self.__schema_registry_url = schema_registry_url
@@ -57,6 +59,7 @@ class KafkaConsumer:
         self.__consumer_config["group.id"] = self.__group_id
         self.__consumer_config["auto.offset.reset"] = "earliest"
         self.__consumer_config["enable.auto.commit"] = False
+        self.__consumer_config["on_commit"] = self.__commit_offsets_callback
         self.__consumer = DeserializingConsumer(self.__consumer_config)
 
     def fetch_deserialization_schema(self, serializer_type, subject_name):
@@ -81,16 +84,23 @@ class KafkaConsumer:
 
     def poll(self):
         msg = None
-
         while msg is None:
             msg = self.__consumer.poll(1.0)
             if msg is None:
                 print("No message, polling again")
 
         if msg.error():
-            print(f"Error on message {msg.error()}")
+            raise KafkaException(msg.error())
         else:
             return msg
 
+    def commit_offsets(self):
+        self.__consumer.commit(asynchronous=True)
+
     def terminate(self):
+        try:
+            self.__consumer.commit(asynchronous=False)
+        except KafkaException as e:
+            if e.args[0].code() == KafkaError._NO_OFFSET:
+                print("No offsets to commit, moving on.")
         self.__consumer.close()

@@ -1,4 +1,5 @@
 import sys
+from time import sleep
 
 from confluent_kafka.avro import SerializerError
 
@@ -9,7 +10,6 @@ from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor im
 from datetime import datetime, timezone
 
 
-
 def main():
     configuration = EventProcessorConfiguration(sys.argv[1:])
     message_consumer = KafkaConsumer(configuration.schema_registry_url,
@@ -18,7 +18,8 @@ def main():
                                      SupportedDeserializers.AVRO_DESERIALIZER,
                                      f"{configuration.kafka_source_topic}-value",
                                      configuration.group_id,
-                                     configuration.kafka_bootstrap_server)
+                                     configuration.kafka_bootstrap_server,
+                                     on_commit_offsets)
 
     message_consumer.subscribe_topic(configuration.kafka_source_topic)
     counter = 0
@@ -27,9 +28,18 @@ def main():
             msg = message_consumer.poll()
             print(msg.key())
             message_content = ProducerToProcessor(msg.value())
-            print(f"{message_content.payload} {datetime.fromtimestamp(message_content.event_timestamp/1000, tz=timezone.utc)}")
+            print(
+                f"{msg.partition()}:{msg.offset()}  "
+                f"{message_content.payload} "
+                f"{datetime.fromtimestamp(message_content.event_timestamp / 1000, tz=timezone.utc)}")
             counter += 1
-            print(f"Consumer {counter} msgs")
+            print(f"Consumed {counter} msgs")
+
+            if (counter % configuration.batch_size_to_commit_offsets) == 0:
+                print(f"Commiting offsets on {counter} msgs")
+                message_consumer.commit_offsets()
+                sleep(1)
+
         except KeyboardInterrupt:
             print("User asked for termination.")
             break
@@ -37,8 +47,14 @@ def main():
             print(f"Message Deserialization failed {e}")
             pass
 
-        
     message_consumer.terminate()
+
+
+def on_commit_offsets(err, partitions):
+    if err:
+        print(str(err))
+    else:
+        print(f"Commited partition offsets: {str(partitions)}")
 
 
 if __name__ == '__main__':
