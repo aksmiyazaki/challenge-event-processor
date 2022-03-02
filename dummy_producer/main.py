@@ -2,6 +2,7 @@ import argparse
 import uuid
 from datetime import datetime, timezone
 import sys
+from time import sleep
 
 from kafka.producer.boilerplate import KafkaProducer, SupportedSerializers
 from logger.boilerplate import get_logger
@@ -32,7 +33,7 @@ def main():
             "event_timestamp": int(datetime.timestamp(datetime.now(tz=timezone.utc)) * 1000)
         })
 
-        def callback(err, msg):
+        def produce_callback(err, msg):
             if err:
                 logger.error(f"Error producing message! {err}")
             else:
@@ -41,7 +42,7 @@ def main():
         message_producer.asynchronous_send(topic=cli_args.target_topic,
                                            key=cli_args.origin_service_id,
                                            value=message.dict(),
-                                           callback_after_delivery=callback)
+                                           callback_after_delivery=produce_callback)
 
     message_producer.terminate()
 

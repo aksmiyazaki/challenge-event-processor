@@ -1,4 +1,7 @@
 import sys
+
+from confluent_kafka import KafkaError
+
 from logger.boilerplate import get_logger
 
 from confluent_kafka.avro import SerializerError
@@ -15,9 +18,8 @@ message_counter = 0
 
 
 def main():
-    logger = get_logger()
-    logger.info("Starting application")
-    configuration = EventProcessorConfiguration(sys.argv[1:], logger)
+    configuration = EventProcessorConfiguration(sys.argv[1:])
+    logger = get_logger(configuration.event_processor_id)
     logger.info("Parsed Configuration")
 
     message_consumer = KafkaConsumer(configuration.schema_registry_url,
@@ -33,7 +35,7 @@ def main():
     message_consumer.subscribe_topic(configuration.kafka_source_topic)
 
     logger.info(f"Starting consuming {configuration.kafka_source_topic}.")
-    output_producers = build_output_producers(configuration)
+    output_producers = build_output_producers(configuration, logger)
 
     while True:
         try:
@@ -63,14 +65,15 @@ def main():
 def build_contextual_commit_offsets_callback(logger):
     def on_commit_offsets(err, partitions):
         if err:
-            logger.error(str(err))
+            if err.code() != KafkaError._NO_OFFSET:
+                logger.error(str(err))
         else:
             logger.info(f"Committed partition offsets: {str(partitions)}")
 
     return on_commit_offsets
 
 
-def build_output_producers(configuration):
+def build_output_producers(configuration, logger):
     output_producers = {}
     for key, value in configuration.service_destinations.items():
         output_producers[key] = KafkaProducer(configuration.schema_registry_url,
@@ -78,7 +81,8 @@ def build_output_producers(configuration):
                                               None,
                                               SupportedSerializers.AVRO_SERIALIZER,
                                               value["output_subject"],
-                                              configuration.kafka_bootstrap_server)
+                                              configuration.kafka_bootstrap_server,
+                                              logger)
     return output_producers
 
 
@@ -108,7 +112,7 @@ def build_contextual_callback(configuration, consumer, logger):
     def check_and_commit_offsets(err, msg):
         global message_counter
         if err:
-            logger.error(f"Couldn't deliver message.")
+            logger.error(f"Couldn't deliver message: {msg.key()} {msg.value()}")
         else:
             message_counter += 1
             logger.debug(f"Send Message Successful, {message_counter}")

@@ -3,10 +3,16 @@ import json
 
 
 class EventProcessorConfiguration:
-    def __init__(self, args_list, logger):
+    def __init__(self, args_list):
         parser = argparse.ArgumentParser("""
         Processor of Kafka Events, making a fanout of a multitenant topic to service-specific topics
         """)
+
+        parser.add_argument("-processor_id",
+                            dest="processor_id",
+                            type=str,
+                            help="Identifier of this processor instance.",
+                            required=True)
 
         parser.add_argument("-bootstrap_server",
                             dest="kafka_bootstrap_server",
@@ -51,6 +57,7 @@ class EventProcessorConfiguration:
                             required=True)
 
         parsed_args = parser.parse_args(args_list)
+        self.event_processor_id = parsed_args.processor_id
         self.kafka_bootstrap_server = parsed_args.kafka_bootstrap_server
         self.kafka_source_topic = parsed_args.source_topic
         self.schema_registry_url = parsed_args.schema_registry_url
