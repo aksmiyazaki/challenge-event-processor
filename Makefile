@@ -17,5 +17,7 @@ production-setup:
 
 .PHONY: local-register-schemas
 local-register-schemas:
-	./schemas/avro_schemas/register-schema.sh ./schemas/avro_schemas/producer-to-processor.avsc
+	./schemas/avro_schemas/register-schema.sh ./schemas/avro_schemas/producer-to-processor.avsc http://localhost:8081/subjects/producer.to.processor-value/versions
+	./schemas/avro_schemas/register-schema.sh ./schemas/avro_schemas/producer-to-consumer.avsc http://localhost:8081/subjects/producer.to.consumer-value/versions
+
 

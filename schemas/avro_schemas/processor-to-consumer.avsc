@@ -1,0 +1,30 @@
+{
+  "name": "ProcessorToConsumer",
+  "namespace": "service_messages",
+  "type": "record",
+  "doc": "Schema that defines messages exchanged between the event processor and downstream consumers.",
+  "fields": [
+    {
+      "name": "origin_service_id",
+      "type": "string",
+      "doc": "A unique identifier of the service."
+    },
+    {
+      "name": "producer_event_timestamp",
+      "type": "long",
+      "logicalType" : "timestamp-millis",
+      "doc": "Event closest to event production. Difference with it gives you total lag of the platform."
+    },
+    {
+      "name": "processor_event_timestamp",
+      "type": "long",
+      "logicalType" : "timestamp-millis",
+      "doc": "Event after processing and validation from event processor."
+    },
+    {
+      "name": "payload",
+      "type": "string",
+      "doc": "The content of the event."
+    }
+  ]
+}

@@ -5,6 +5,7 @@ from confluent_kafka.avro import SerializerError
 
 from event_processor.configuration.configuration import EventProcessorConfiguration
 from kafka.consumer.boilerplate import KafkaConsumer, SupportedDeserializers
+from kafka.producer.boilerplate import KafkaProducer, SupportedSerializers
 from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import ProducerToProcessor
 
 from datetime import datetime, timezone
@@ -22,6 +23,8 @@ def main():
                                      on_commit_offsets)
 
     message_consumer.subscribe_topic(configuration.kafka_source_topic)
+    output_producers = build_output_producers(configuration)
+
     counter = 0
     while True:
         try:
@@ -36,7 +39,7 @@ def main():
             print(f"Consumed {counter} msgs")
 
             if (counter % configuration.batch_size_to_commit_offsets) == 0:
-                print(f"Commiting offsets on {counter} msgs")
+                print(f"Committing offsets on {counter} msgs")
                 message_consumer.commit_offsets()
                 sleep(1)
 
@@ -54,7 +57,23 @@ def on_commit_offsets(err, partitions):
     if err:
         print(str(err))
     else:
-        print(f"Commited partition offsets: {str(partitions)}")
+        print(f"Committed partition offsets: {str(partitions)}")
+
+
+def build_output_producers(configuration):
+    output_producers = {}
+    for key, value in configuration.service_destinations.items():
+        output_producers[key] = KafkaProducer(configuration.schema_registry_url,
+                                              SupportedSerializers.STRING_SERIALIZER,
+                                              None,
+                                              SupportedSerializers.AVRO_SERIALIZER,
+                                              value["output_subject"],
+                                              configuration.kafka_bootstrap_server)
+    return output_producers
+
+
+def process_message(key, value_as_object, output_producers, output_topic):
+    print(f"Processing message: {key}, {value_as_object.dict()}")
 
 
 if __name__ == '__main__':

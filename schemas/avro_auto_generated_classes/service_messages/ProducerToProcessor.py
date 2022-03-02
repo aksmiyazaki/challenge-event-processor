@@ -8,7 +8,6 @@ from typing import Union
 
 
 class ProducerToProcessor(object):
-
     schema = """
     {
         "name": "ProducerToProcessor",
