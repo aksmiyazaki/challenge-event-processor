@@ -4,17 +4,24 @@ from datetime import datetime, timezone
 import sys
 
 from kafka.producer.boilerplate import KafkaProducer, SupportedSerializers
+from logger.boilerplate import get_logger
 from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import ProducerToProcessor
 
 
 def main():
+    logger = get_logger()
     cli_args = parse_cli_arguments(sys.argv[1:])
+    logger.info("Building message producer")
     message_producer = KafkaProducer(cli_args.schema_registry_url,
                                      SupportedSerializers.STRING_SERIALIZER,
                                      None,
                                      SupportedSerializers.AVRO_SERIALIZER,
                                      f"{cli_args.target_topic}-value",
-                                     cli_args.kafka_bootstrap_server)
+                                     cli_args.kafka_bootstrap_server,
+                                     logger)
+
+    logger.info(f"Starting producing messager, will producer {cli_args.amount_of_messages} "
+                f"messages of {cli_args.list_of_destinations} destination types")
 
     for iterator in range(cli_args.amount_of_messages):
         message = ProducerToProcessor({
@@ -27,9 +34,9 @@ def main():
 
         def callback(err, msg):
             if err:
-                print(f"ERROR! {err}")
+                logger.error(f"Error producing message! {err}")
             else:
-                print(f"Message sent! {msg}")
+                logger.info(f"Message sent! Offset: {msg.offset()}, Key: {msg.key()}, Value: {msg.value()}")
 
         message_producer.asynchronous_send(topic=cli_args.target_topic,
                                            key=cli_args.origin_service_id,
@@ -85,7 +92,6 @@ def parse_cli_arguments(args_list):
 
     args = parser.parse_args(args_list)
     args.list_of_destinations = [str.upper(el) for el in args.list_of_destinations]
-    print(args.list_of_destinations)
     return args
 
 

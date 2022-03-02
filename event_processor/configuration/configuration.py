@@ -3,7 +3,7 @@ import json
 
 
 class EventProcessorConfiguration:
-    def __init__(self, args_list):
+    def __init__(self, args_list, logger):
         parser = argparse.ArgumentParser("""
         Processor of Kafka Events, making a fanout of a multitenant topic to service-specific topics
         """)

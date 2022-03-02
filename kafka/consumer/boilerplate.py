@@ -20,7 +20,8 @@ class KafkaConsumer:
                  value_deserializer_subject,
                  group_id,
                  bootstrap_servers,
-                 callback_commit_offsets):
+                 callback_commit_offsets,
+                 logger):
         self.__commit_offsets_callback = callback_commit_offsets
         self.__group_id = group_id
         self.__bootstrap_servers = bootstrap_servers
@@ -37,6 +38,8 @@ class KafkaConsumer:
         self.__value_deserialization_schema = None
         self.__consumer_config = {}
         self.__consumer = None
+        self.__logger = logger
+        logger.info("Initializing consumer...")
         self.initialize()
 
     def initialize(self):
@@ -87,7 +90,7 @@ class KafkaConsumer:
         while msg is None:
             msg = self.__consumer.poll(1.0)
             if msg is None:
-                print("No message, polling again")
+                self.__logger.debug("No message, polling again")
 
         if msg.error():
             raise KafkaException(msg.error())
@@ -102,5 +105,5 @@ class KafkaConsumer:
             self.__consumer.commit(asynchronous=False)
         except KafkaException as e:
             if e.args[0].code() == KafkaError._NO_OFFSET:
-                print("No offsets to commit, moving on.")
+                self.__logger.info("No offsets to commit, moving on.")
         self.__consumer.close()

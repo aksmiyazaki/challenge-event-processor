@@ -18,7 +18,8 @@ class KafkaProducer:
                  key_serializer_subject,
                  value_serializer_type,
                  value_serializer_subject,
-                 bootstrap_servers):
+                 bootstrap_servers,
+                 logger):
         self.__bootstrap_servers = bootstrap_servers
         self.__schema_registry_url = schema_registry_url
         self.schema_registry_conf = {
@@ -33,6 +34,8 @@ class KafkaProducer:
         self.__value_serialization_schema = None
         self.__producer_config = {}
         self.__producer = None
+        self.__logger = logger
+        logger.info("Initializing producer")
         self.initialize()
 
     def initialize(self):
@@ -78,4 +81,5 @@ class KafkaProducer:
                                 on_delivery=callback_after_delivery)
 
     def terminate(self):
+        self.__logger.info("Triggered termination, flushing.")
         self.__producer.flush()

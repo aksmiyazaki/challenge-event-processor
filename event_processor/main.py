@@ -1,4 +1,5 @@
 import sys
+from logger.boilerplate import get_logger
 
 from confluent_kafka.avro import SerializerError
 
@@ -14,7 +15,11 @@ message_counter = 0
 
 
 def main():
-    configuration = EventProcessorConfiguration(sys.argv[1:])
+    logger = get_logger()
+    logger.info("Starting application")
+    configuration = EventProcessorConfiguration(sys.argv[1:], logger)
+    logger.info("Parsed Configuration")
+
     message_consumer = KafkaConsumer(configuration.schema_registry_url,
                                      SupportedDeserializers.STRING_DESERIALIZER,
                                      None,
@@ -22,9 +27,12 @@ def main():
                                      f"{configuration.kafka_source_topic}-value",
                                      configuration.group_id,
                                      configuration.kafka_bootstrap_server,
-                                     on_commit_offsets)
-
+                                     build_contextual_commit_offsets_callback(logger),
+                                     logger)
+    logger.info("Created Consumer.")
     message_consumer.subscribe_topic(configuration.kafka_source_topic)
+
+    logger.info(f"Starting consuming {configuration.kafka_source_topic}.")
     output_producers = build_output_producers(configuration)
 
     while True:
@@ -37,22 +45,29 @@ def main():
                             output_producers,
                             configuration.service_destinations[message_content.destination_service_type][
                                 "output_topic"],
-                            build_contextual_callback(configuration, message_consumer))
+                            build_contextual_callback(configuration, message_consumer, logger),
+                            logger)
         except KeyboardInterrupt:
-            print("User asked for termination.")
+            logger.info("User asked for termination.")
             break
         except SerializerError as e:
-            print(f"Message Deserialization failed {e}")
+            logger.error(f"Message Deserialization failed {e}")
             pass
+
+    for _, producer in output_producers.items():
+        producer.terminate()
 
     message_consumer.terminate()
 
 
-def on_commit_offsets(err, partitions):
-    if err:
-        print(str(err))
-    else:
-        print(f"Committed partition offsets: {str(partitions)}")
+def build_contextual_commit_offsets_callback(logger):
+    def on_commit_offsets(err, partitions):
+        if err:
+            logger.error(str(err))
+        else:
+            logger.info(f"Committed partition offsets: {str(partitions)}")
+
+    return on_commit_offsets
 
 
 def build_output_producers(configuration):
@@ -67,8 +82,8 @@ def build_output_producers(configuration):
     return output_producers
 
 
-def process_message(key, value_as_object, output_producers, output_topic, producing_callback):
-    print(f"Processing message: {key}, {value_as_object.dict()}")
+def process_message(key, value_as_object, output_producers, output_topic, producing_callback, logger):
+    logger.debug(f"Processing message: {key}, {value_as_object.dict()}")
     target_service_type = value_as_object.get_destination_service_type()
 
     if target_service_type not in output_producers.keys():
@@ -89,16 +104,16 @@ def process_message(key, value_as_object, output_producers, output_topic, produc
                                                             callback_after_delivery=producing_callback)
 
 
-def build_contextual_callback(configuration, consumer):
+def build_contextual_callback(configuration, consumer, logger):
     def check_and_commit_offsets(err, msg):
         global message_counter
         if err:
-            print(f"Couldn't deliver message.")
+            logger.error(f"Couldn't deliver message.")
         else:
             message_counter += 1
-            print(f"Send Message Successful, {message_counter}")
+            logger.debug(f"Send Message Successful, {message_counter}")
             if (message_counter % configuration.batch_size_to_commit_offsets) == 0:
-                print(f"Committing offsets on {message_counter} msgs")
+                logger.info(f"Committing offsets on {message_counter} msgs")
                 consumer.commit_offsets()
 
     return check_and_commit_offsets
