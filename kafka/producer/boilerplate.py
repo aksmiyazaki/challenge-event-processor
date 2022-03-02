@@ -72,7 +72,7 @@ class KafkaProducer:
             return AvroSerializer(self.__schema_registry_client, schema.schema.schema_str)
 
     def asynchronous_send(self, key, value, topic, callback_after_delivery):
-        self.__producer.produce(topic=topic,
+        return self.__producer.produce(topic=topic,
                                 key=key,
                                 value=value,
                                 on_delivery=callback_after_delivery)

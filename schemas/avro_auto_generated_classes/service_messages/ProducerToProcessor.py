@@ -8,6 +8,7 @@ from typing import Union
 
 
 class ProducerToProcessor(object):
+
     schema = """
     {
         "name": "ProducerToProcessor",
@@ -33,11 +34,13 @@ class ProducerToProcessor(object):
             {
                 "name": "event_timestamp",
                 "type": "long",
-                "logicalType": "timestamp-millis"
+                "logicalType": "timestamp-millis",
+                "doc": "Event closest to event production. Difference with it gives you total lag of the platform."
             },
             {
                 "name": "payload",
-                "type": "string"
+                "type": "string",
+                "doc": "The content of the event."
             }
         ]
     }

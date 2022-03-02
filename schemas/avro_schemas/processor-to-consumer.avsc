@@ -5,9 +5,19 @@
   "doc": "Schema that defines messages exchanged between the event processor and downstream consumers.",
   "fields": [
     {
-      "name": "origin_service_id",
+      "name": "producer_service_id",
       "type": "string",
-      "doc": "A unique identifier of the service."
+      "doc": "First service on the pipeline that produced this event.."
+    },
+    {
+      "name": "processor_service_id",
+      "type": "string",
+      "doc": "Service Id of the processor."
+    },
+    {
+      "name": "destination_type",
+      "type": "string",
+      "doc": "Service type after the event_processor that should receive this message."
     },
     {
       "name": "producer_event_timestamp",

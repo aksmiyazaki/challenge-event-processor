@@ -39,8 +39,8 @@ class EventProcessorConfiguration:
                                  " of that number. ex: 10 will commit after the 10, 20, 30, .... messages.",
                             required=True)
 
-        parser.add_argument("-destination_topics",
-                            dest="destination_topics",
+        parser.add_argument("-destination_configurations",
+                            dest="destination_configurations",
                             type=str,
                             help="A dict of pairs written like a json object, representing "
                                  "Service/topic relationship. This parameter is a String."
@@ -56,7 +56,7 @@ class EventProcessorConfiguration:
         self.schema_registry_url = parsed_args.schema_registry_url
         self.group_id = parsed_args.group_id
         self.batch_size_to_commit_offsets = parsed_args.batch_size_to_commit_offsets
-        self.service_destinations = json.loads(parsed_args.destination_topics)
+        self.service_destinations = json.loads(parsed_args.destination_configurations)
         for key, value in self.service_destinations.items():
             if "output_topic" not in value.keys():
                 raise Exception("Each service configuration must have an output_topic element.")

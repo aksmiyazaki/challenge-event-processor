@@ -26,7 +26,7 @@ def application_args():
         DUMMY_GROUP_ID,
         "-batch_size_to_commit_offsets",
         DUMMY_BATCH_SIZE_TO_COMMIT_OFFSETS,
-        "-destination_topics",
+        "-destination_configurations",
         DUMMY_DESTINATION_TOPICS
     ]
 
