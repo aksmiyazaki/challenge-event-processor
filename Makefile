@@ -1,10 +1,10 @@
 .PHONY: local-docker-compose-spinup
 local-docker-compose-spinup:
-	docker-compose -f ./docker/docker-compose.yml up -d
+	docker-compose -f ./docker/docker-compose-local-dev.yml up -d
 
 .PHONY: local-docker-compose-teardown
 local-docker-compose-teardown:
-	docker-compose -f ./docker/docker-compose.yml down
+	docker-compose -f ./docker/docker-compose-local-dev.yml down
 
 .PHONY: local-setup
 local-setup:
