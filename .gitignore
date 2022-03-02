@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 .idea/
+
+schemas/avro_auto_generated_classes/*
