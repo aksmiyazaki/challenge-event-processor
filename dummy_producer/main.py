@@ -2,7 +2,6 @@ import argparse
 import uuid
 from datetime import datetime, timezone
 import sys
-from time import sleep
 
 from kafka.producer.boilerplate import KafkaProducer, SupportedSerializers
 from logger.boilerplate import get_logger
@@ -21,7 +20,7 @@ def main():
                                      cli_args.kafka_bootstrap_server,
                                      logger)
 
-    logger.info(f"Starting producing messager, will producer {cli_args.amount_of_messages} "
+    logger.info(f"Starting producing messager, will produce {cli_args.amount_of_messages} "
                 f"messages of {cli_args.list_of_destinations} destination types")
 
     for iterator in range(cli_args.amount_of_messages):

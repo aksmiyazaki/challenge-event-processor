@@ -1,19 +1,52 @@
-version: '2.1'
+version: '2.8'
 
 services:
   kafka-cluster:
     image: landoop/fast-data-dev:latest
     environment:
-      ADV_HOST: 127.0.0.1         
+      ADV_HOST: kafka-cluster
       RUNTESTS: 0                
     ports:
       - 2181:2181                 
       - 3030:3030              
       - 8081-8083:8081-8083       
       - 9581-9585:9581-9585    
-      - 9092:9092                
+      - 9092:9092
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://kafka-cluster:8081/subjects/nyc_yellow_taxi_trip_data-value/versions/latest" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  kafka-create-resources:
+    image: custom-kafka-resource-creator
+    depends_on:
+      kafka-cluster:
+        condition: service_healthy
+    environment:
+      SCHEMA_REGISTRY_URL: http://kafka-cluster:8081
+      TOPIC_LIST: producer.to.processor processor.to.marketing processor.to.finance
+
+  kafka-cli:
+    image: taion809/kafka-cli:2.2.0
+    depends_on:
+      kafka-cluster:
+        condition: service_healthy
+    command: kafka-topics.sh --create --bootstrap-server kafka-cluster:9092 --topic producer.to.processor --replication-factor 1 --partitions 3
+
   producer-1:
     depends_on:
-      - kafka-cluster
+      kafka-cluster:
+        condition: service_healthy
+    environment:
+      BOOTSTRAP_SERVERS: kafka-cluster:9092
+      SCHEMA_REGISTRY_URL: http://kafka-cluster:8081
+      TARGET_TOPIC: producer.to.processor
+      ORIGIN_SERVICE_TYPE: FINANCE
+      ORIGIN_SERVICE_ID: producer-1
+      LIST_OF_DESTINATIONS: MARKETING LOGISTICS
+      AMOUNT_OF_MESSAGES: 100
     image: custom-producer
+
+
 

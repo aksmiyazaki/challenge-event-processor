@@ -20,6 +20,20 @@ local-register-schemas:
 	./schemas/avro_schemas/register-schema.sh ./schemas/avro_schemas/producer-to-processor.avsc http://localhost:8081/subjects/producer.to.processor-value/versions
 	./schemas/avro_schemas/register-schema.sh ./schemas/avro_schemas/processor-to-consumer.avsc http://localhost:8081/subjects/processor.to.consumer-value/versions
 
+
+.PHONY: dockerized-register-schemas
+dockerized-register-schemas:
+	./schemas/avro_schemas/register-schema.sh ./schemas/avro_schemas/producer-to-processor.avsc ${SCHEMA_REGISTRY_URL}/subjects/producer.to.processor-value/versions
+	./schemas/avro_schemas/register-schema.sh ./schemas/avro_schemas/processor-to-consumer.avsc ${SCHEMA_REGISTRY_URL}/subjects/processor.to.consumer-value/versions
+    
+
+.PHONY: build-docker-custom-images
+build-docker-custom-images:
+	docker build -t custom-producer -f docker/producer/Dockerfile .
+	docker build -t custom-kafka-resource-creator -f docker/kafka_resource_creator/Dockerfile .
+
+
+
 .PHONY: local-generate-classes-from-avro-schemas
 local-generate-classes-from-avro-schemas:
 	avro-to-python schemas/avro_schemas/processor-to-consumer.avsc schemas/avro_auto_generated_classes/
