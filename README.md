@@ -1,5 +1,12 @@
-# challenge-event-processor
-An implementation of a challenge that requires an event processor.
+## Event Processor
+An implementation of a challenge that requires a multi-tenant event processor.
+
+## Considerations
+- At least once delivery.
+- Kafka will be the persistence layer.
+- 
+
+
 
 -> Python 3.9.2 because it was available in pyenv.
 -> changed composed schema because of problems with confluent cloud version: https://github.com/confluentinc/schema-registry/issues/1439

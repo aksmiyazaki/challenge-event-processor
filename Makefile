@@ -33,6 +33,10 @@ build-docker-custom-images:
 	docker build -t custom-kafka-resource-creator -f docker/kafka_resource_creator/Dockerfile .
 
 
+.PHONY: run-dockerized-environment
+run-dockerized-environment: build-docker-custom-images
+	docker-compose -f docker/docker-compose-environment.yml up
+
 
 .PHONY: local-generate-classes-from-avro-schemas
 local-generate-classes-from-avro-schemas:

@@ -25,28 +25,46 @@ services:
         condition: service_healthy
     environment:
       SCHEMA_REGISTRY_URL: http://kafka-cluster:8081
-      TOPIC_LIST: producer.to.processor processor.to.marketing processor.to.finance
 
-  kafka-cli:
-    image: taion809/kafka-cli:2.2.0
+  kafka-create-topics:
+    image: landoop/fast-data-dev:latest
     depends_on:
       kafka-cluster:
         condition: service_healthy
-    command: kafka-topics.sh --create --bootstrap-server kafka-cluster:9092 --topic producer.to.processor --replication-factor 1 --partitions 3
+    command: > 
+        sh -c "kafka-topics --create --bootstrap-server kafka-cluster:9092 --topic producer.to.processor --replication-factor 1 --partitions 3 &&
+               kafka-topics --create --bootstrap-server kafka-cluster:9092 --topic processor.to.marketing --replication-factor 1 --partitions 3 &&
+               kafka-topics --create --bootstrap-server kafka-cluster:9092 --topic processor.to.finance --replication-factor 1 --partitions 3 &&
+               kafka-topics --create --bootstrap-server kafka-cluster:9092 --topic processor.to.logistics --replication-factor 1 --partitions 3"
+
+  event-processor-1:
+      depends_on:
+        kafka-cluster:
+          condition: service_healthy
+      image: custom-producer
+      command: >
+        sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
+               sleep 45 && 
+               python ./event_processor/main.py -processor_id event-processor-1 -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -source_topic producer.to.processor -batch_size_to_commit_offsets 20 -destination_configurations '{\"FINANCE\": {\"output_topic\": \"processor.to.finance\", \"output_subject\": \"processor.to.consumer-value\"}, \"MARKETING\": {\"output_topic\": \"processor.to.marketing\", \"output_subject\": \"processor.to.consumer-value\"}, \"LOGISTICS\": {\"output_topic\": \"processor.to.logistics\", \"output_subject\": \"processor.to.consumer-value\"}}' -group_id event_processor"
 
   producer-1:
     depends_on:
       kafka-cluster:
         condition: service_healthy
-    environment:
-      BOOTSTRAP_SERVERS: kafka-cluster:9092
-      SCHEMA_REGISTRY_URL: http://kafka-cluster:8081
-      TARGET_TOPIC: producer.to.processor
-      ORIGIN_SERVICE_TYPE: FINANCE
-      ORIGIN_SERVICE_ID: producer-1
-      LIST_OF_DESTINATIONS: MARKETING LOGISTICS
-      AMOUNT_OF_MESSAGES: 100
     image: custom-producer
+    command: >
+      sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
+             sleep 60 && 
+             python ./dummy_producer/main.py -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type FINANCE -origin_service_id producer-1 -list_of_destinations MARKETING LOGISTICS -amount_of_messages 100"
 
 
+  producer-2:
+    depends_on:
+      kafka-cluster:
+        condition: service_healthy
+    image: custom-producer
+    command: >
+      sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
+             sleep 60 && 
+             python ./dummy_producer/main.py -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type AUDITING -origin_service_id producer-2 -list_of_destinations FINANCE LOGISTICS -amount_of_messages 100"
 

@@ -80,6 +80,9 @@ class KafkaProducer:
                                 value=value,
                                 on_delivery=callback_after_delivery)
 
-    def terminate(self):
+    def trigger_delivery_callbacks(self, timeout_in_seconds=0.0):
+        self.__producer.poll(timeout_in_seconds)
+
+    def flush_producer(self):
         self.__logger.info("Triggered termination, flushing.")
         self.__producer.flush()
