@@ -50,7 +50,9 @@ def main():
 def build_contextual_commit_offsets_callback(logger):
     def on_commit_offsets(err, partitions):
         if err:
-            if err.code() != KafkaError._NO_OFFSET:
+            if err.code() == KafkaError._NO_OFFSET:
+                logger.info("End of partition event.")
+            else:
                 logger.error(str(err))
         else:
             logger.info(f"Committed partition offsets: {str(partitions)}")
@@ -74,32 +76,22 @@ def build_output_producers(configuration, logger):
     return output_producers
 
 
-def main_loop(configuration, message_consumer, output_producers, logger):
-
+def main_loop(configuration, message_consumer, output_producers, logger, is_running=True):
     message_consumer.subscribe_topic(configuration.kafka_source_topic)
 
     try:
-        while True:
+        while is_running:
             try:
-                msg = message_consumer.poll()
-                message_content = ProducerToProcessor(msg.value())
-
                 process_message(
-                    msg.key(),
-                    message_content,
-                    output_producers,
-                    configuration.service_destinations[
-                        message_content.destination_service_type
-                    ]["output_topic"],
-                    build_contextual_callback(configuration, message_consumer, logger),
-                    logger,
+                    configuration, message_consumer, output_producers, logger,
+                    build_contextual_callback(configuration, message_consumer, logger)
                 )
             except KeyboardInterrupt:
                 logger.info("User asked for termination.")
-                break
+                is_running = False
             except SerializerError as e:
-                logger.error(f"Message Deserialization failed {e}")
-                pass
+                logger.error(f"Message Deserialization failed {e}. Ending this process.")
+                is_running = False
     finally:
         for _, producer in output_producers.items():
             producer.flush_producer()
@@ -107,33 +99,41 @@ def main_loop(configuration, message_consumer, output_producers, logger):
 
 
 def process_message(
-    key, value_as_object, output_producers, output_topic, producing_callback, logger
+        configuration, message_consumer, output_producers, logger, callback
 ):
-    logger.debug(f"Processing message: {key}, {value_as_object.dict()}")
-    target_service_type = value_as_object.get_destination_service_type()
+    msg = message_consumer.poll()
+    key = msg.key()
+    parsed_message = ProducerToProcessor(msg.value())
+
+    logger.debug(f"Processing message: {key}, {parsed_message.dict()}")
+    target_service_type = parsed_message.get_destination_service_type()
 
     if target_service_type not in output_producers.keys():
         raise Exception(f"No destination for {target_service_type}.")
 
     processor_message = ProcessorToConsumer(
         {
-            "producer_service_id": value_as_object.get_origin_service_id(),
-            "processor_service_id": "MAKEME",
-            "destination_type": value_as_object.get_destination_service_type(),
-            "producer_event_timestamp": value_as_object.get_event_timestamp(),
-            "processor_event_timestamp": int(
-                datetime.timestamp(datetime.now(tz=timezone.utc)) * 1000
-            ),
-            "payload": value_as_object.get_payload(),
+            "producer_service_id": parsed_message.get_origin_service_id(),
+            "processor_service_id": configuration.event_processor_id,
+            "destination_type": parsed_message.get_destination_service_type(),
+            "producer_event_timestamp": parsed_message.get_event_timestamp(),
+            "processor_event_timestamp": get_now_as_millisseconds_from_epoch(),
+            "payload": parsed_message.get_payload(),
         }
     )
 
     output_producers[target_service_type].asynchronous_send(
-        topic=output_topic,
+        topic=configuration.service_destinations[
+            parsed_message.get_destination_service_type()
+        ]["output_topic"],
         key=key,
         value=processor_message.dict(),
-        callback_after_delivery=producing_callback,
+        callback_after_delivery=callback
     )
+
+
+def get_now_as_millisseconds_from_epoch():
+    return int(datetime.timestamp(datetime.now(tz=timezone.utc)) * 1000)
 
 
 def build_contextual_callback(configuration, consumer, logger):
