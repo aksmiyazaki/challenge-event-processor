@@ -8,6 +8,7 @@ An implementation of a challenge that requires a multi-tenant event processor.
 ## Technology Choices
 
 - Python 3.9.2 just because I had it on my pyenv setup.
+- Black as linter, just because its popularity. I had to go back a few versions in order to avoid dependency conflicts.
 - landoop fast-data-dev docker image because it is an environment that I am used to play with on my studies.
 - Kafka because it is a beautiful piece of technology, to be honest I struggled to don't go borderline and use
 [this guy](https://redpanda.com/). But since I have a strong background on Kafka, I chose it. 

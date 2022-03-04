@@ -1,6 +1,8 @@
 .PHONY: help
 help:
 	$(info ************ Available Commands ************)
+	$(info make test: Executes unit tests)
+	$(info make lint: Reformats code according to a standard (runs black))
 	$(info make local-docker-compose-spinup: spins a docker environment locally. Spins just kafka / schema registry)
 	$(info make local-docker-compose-teardown: tears down the environment spinned in the command above)
 	$(info make local-setup: installs python dependencies for development. Doing this in a virtual environment is recommended)
@@ -60,3 +62,6 @@ local-generate-classes-from-avro-schemas:
 test:
 	coverage run -m pytest
 
+.PHONY: lint
+lint:
+	black .
