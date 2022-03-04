@@ -11,7 +11,7 @@ DUMMY_DESTINATION_TOPICS = ("{\"finance\": {\"output_topic\": \"finance.topic\",
                             "\"output_subject\":\"finance.topic-value\"},"
                             "\"marketing\": {\"output_topic\": \"marketing.topic\", "
                             "\"output_subject\":\"marketing.topic-value\"}}")
-
+DUMMY_PROCESSOR_ID = "potato"
 
 @pytest.fixture
 def application_args():
@@ -27,7 +27,9 @@ def application_args():
         "-batch_size_to_commit_offsets",
         DUMMY_BATCH_SIZE_TO_COMMIT_OFFSETS,
         "-destination_configurations",
-        DUMMY_DESTINATION_TOPICS
+        DUMMY_DESTINATION_TOPICS,
+        "-processor_id",
+        DUMMY_PROCESSOR_ID
     ]
 
 
@@ -41,3 +43,4 @@ def test_successfully_parse_args(application_args):
     assert len(config.service_destinations) == 2
     assert config.service_destinations["finance"]["output_topic"] == "finance.topic"
     assert config.service_destinations["finance"]["output_subject"] == "finance.topic-value"
+    assert config.event_processor_id == DUMMY_PROCESSOR_ID
