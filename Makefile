@@ -22,8 +22,8 @@ local-docker-compose-teardown:
 
 .PHONY: local-setup
 local-setup:
-	pip install -r requirements.txt
 	pip install -r requirements-development.txt
+	pip install -r requirements.txt
 
 .PHONY: production-setup
 production-setup:

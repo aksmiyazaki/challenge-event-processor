@@ -5,3 +5,4 @@ avro-python3==1.10.2
 avro-to-python==0.3.3
 markupsafe==2.0.1
 avro-python3==1.10.2
+Click==7.0

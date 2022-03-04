@@ -131,3 +131,5 @@ dmypy.json
 .idea/
 
 schemas/avro_auto_generated_classes/*
+.coverage
+.pytest_cache

@@ -12,19 +12,19 @@ class SupportedSerializers(Enum):
 
 
 class KafkaProducer:
-    def __init__(self,
-                 schema_registry_url,
-                 key_serializer_type,
-                 key_serializer_subject,
-                 value_serializer_type,
-                 value_serializer_subject,
-                 bootstrap_servers,
-                 messages_to_poll,
-                 logger,
-                 must_initialize=True):
-        self.schema_registry_conf = {
-            'url': schema_registry_url
-        }
+    def __init__(
+        self,
+        schema_registry_url,
+        key_serializer_type,
+        key_serializer_subject,
+        value_serializer_type,
+        value_serializer_subject,
+        bootstrap_servers,
+        messages_to_poll,
+        logger,
+        must_initialize=True,
+    ):
+        self.schema_registry_conf = {"url": schema_registry_url}
         self.messages_to_poll = messages_to_poll
         self.__bootstrap_servers = bootstrap_servers
         self.__schema_registry_client = None
@@ -46,16 +46,20 @@ class KafkaProducer:
     def initialize(self):
         self.__schema_registry_client = SchemaRegistryClient(self.schema_registry_conf)
 
-        self.__key_serialization_schema = self.fetch_serialization_schema(self.__key_serializer_type,
-                                                                          self.__key_serializer_subject)
+        self.__key_serialization_schema = self.fetch_serialization_schema(
+            self.__key_serializer_type, self.__key_serializer_subject
+        )
 
-        self.__value_serialization_schema = self.fetch_serialization_schema(self.__value_serializer_type,
-                                                                            self.__value_serializer_subject)
+        self.__value_serialization_schema = self.fetch_serialization_schema(
+            self.__value_serializer_type, self.__value_serializer_subject
+        )
 
-        key_serializer = self.build_serializer(self.__key_serializer_type,
-                                               self.__key_serialization_schema)
-        value_serializer = self.build_serializer(self.__value_serializer_type,
-                                                 self.__value_serialization_schema)
+        key_serializer = self.build_serializer(
+            self.__key_serializer_type, self.__key_serialization_schema
+        )
+        value_serializer = self.build_serializer(
+            self.__value_serializer_type, self.__value_serialization_schema
+        )
 
         self.__producer_config["bootstrap.servers"] = self.__bootstrap_servers
         self.__producer_config["key.serializer"] = key_serializer
@@ -72,20 +76,29 @@ class KafkaProducer:
         if serializer_type == SupportedSerializers.STRING_SERIALIZER:
             return StringSerializer()
         elif serializer_type == SupportedSerializers.AVRO_SERIALIZER:
-            if schema is None or schema.schema.schema_str is None or schema.schema.schema_str == "":
-                raise ValueError(f"Cannot encode {SupportedSerializers.AVRO_SERIALIZER} without a Schema")
-            return AvroSerializer(self.__schema_registry_client, schema.schema.schema_str)
+            if (
+                schema is None
+                or schema.schema.schema_str is None
+                or schema.schema.schema_str == ""
+            ):
+                raise ValueError(
+                    f"Cannot encode {SupportedSerializers.AVRO_SERIALIZER} without a Schema"
+                )
+            return AvroSerializer(
+                self.__schema_registry_client, schema.schema.schema_str
+            )
 
     def asynchronous_send(self, key, value, topic, callback_after_delivery):
         self.__amount_of_messages_sent += 1
         if (self.__amount_of_messages_sent % self.messages_to_poll) == 0:
-            self.__logger.info(f"Trying to poll for callbacks, produced {self.__amount_of_messages_sent} messages")
+            self.__logger.info(
+                f"Trying to poll for callbacks, produced {self.__amount_of_messages_sent} messages"
+            )
             self.trigger_delivery_callbacks(1.0)
 
-        return self.__producer.produce(topic=topic,
-                                       key=key,
-                                       value=value,
-                                       on_delivery=callback_after_delivery)
+        return self.__producer.produce(
+            topic=topic, key=key, value=value, on_delivery=callback_after_delivery
+        )
 
     def trigger_delivery_callbacks(self, timeout_in_seconds=0.0):
         self.__producer.poll(timeout_in_seconds)

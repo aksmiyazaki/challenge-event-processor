@@ -12,24 +12,24 @@ class SupportedDeserializers(Enum):
 
 
 class KafkaConsumer:
-    def __init__(self,
-                 schema_registry_url,
-                 key_deserializer_type,
-                 key_deserializer_subject,
-                 value_deserializer_type,
-                 value_deserializer_subject,
-                 group_id,
-                 bootstrap_servers,
-                 callback_commit_offsets,
-                 logger,
-                 must_initialize=True):
+    def __init__(
+        self,
+        schema_registry_url,
+        key_deserializer_type,
+        key_deserializer_subject,
+        value_deserializer_type,
+        value_deserializer_subject,
+        group_id,
+        bootstrap_servers,
+        callback_commit_offsets,
+        logger,
+        must_initialize=True,
+    ):
         self.__commit_offsets_callback = callback_commit_offsets
         self.__group_id = group_id
         self.__bootstrap_servers = bootstrap_servers
         self.__schema_registry_url = schema_registry_url
-        self.schema_registry_conf = {
-            'url': self.__schema_registry_url
-        }
+        self.schema_registry_conf = {"url": self.__schema_registry_url}
         self.__schema_registry_client = None
         self.__key_deserializer_type = key_deserializer_type
         self.__key_deserializer_subject = key_deserializer_subject
@@ -48,16 +48,20 @@ class KafkaConsumer:
     def initialize(self):
         self.__schema_registry_client = SchemaRegistryClient(self.schema_registry_conf)
 
-        self.__key_deserialization_schema = self.fetch_deserialization_schema(self.__key_deserializer_type,
-                                                                              self.__key_deserializer_subject)
+        self.__key_deserialization_schema = self.fetch_deserialization_schema(
+            self.__key_deserializer_type, self.__key_deserializer_subject
+        )
 
-        self.__value_deserialization_schema = self.fetch_deserialization_schema(self.__value_deserializer_type,
-                                                                                self.__value_deserializer_subject)
+        self.__value_deserialization_schema = self.fetch_deserialization_schema(
+            self.__value_deserializer_type, self.__value_deserializer_subject
+        )
 
-        key_deserializer = self.build_deserializer(self.__key_deserializer_type,
-                                                   self.__key_deserialization_schema)
-        value_deserializer = self.build_deserializer(self.__value_deserializer_type,
-                                                     self.__value_deserialization_schema)
+        key_deserializer = self.build_deserializer(
+            self.__key_deserializer_type, self.__key_deserialization_schema
+        )
+        value_deserializer = self.build_deserializer(
+            self.__value_deserializer_type, self.__value_deserialization_schema
+        )
 
         self.__consumer_config["key.deserializer"] = key_deserializer
         self.__consumer_config["value.deserializer"] = value_deserializer
@@ -78,9 +82,17 @@ class KafkaConsumer:
         if serializer_type == SupportedDeserializers.STRING_DESERIALIZER:
             return StringDeserializer()
         elif serializer_type == SupportedDeserializers.AVRO_DESERIALIZER:
-            if schema is None or schema.schema.schema_str is None or schema.schema.schema_str == "":
-                raise ValueError(f"Cannot encode {SupportedDeserializers.AVRO_DESERIALIZER} without a Schema")
-            return AvroDeserializer(self.__schema_registry_client, schema.schema.schema_str)
+            if (
+                schema is None
+                or schema.schema.schema_str is None
+                or schema.schema.schema_str == ""
+            ):
+                raise ValueError(
+                    f"Cannot encode {SupportedDeserializers.AVRO_DESERIALIZER} without a Schema"
+                )
+            return AvroDeserializer(
+                self.__schema_registry_client, schema.schema.schema_str
+            )
 
     def subscribe_topic(self, topic):
         self.__consumer.subscribe([topic])
