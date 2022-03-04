@@ -30,6 +30,8 @@ again, if the schemas were different, I would put in different topics.
 
 The messages in this topic are keyed by an id of the producers. If there is just a few of event_producers, it may be
 wise to change this key strategy, otherwise, we will end up having hot partitions in the `producer.to.processor` topic.
+One thing that worth mentioning is that I didn't care much about the code in the producers since it is not the asset
+being evaluated according to the challenge description.
 
 All the topics in the solution have just 3 partitions, because I guess that evaluating the performance is not an issue
 here. But if we were building a production app, there should be an evaluation on how many partitions each topic would 
@@ -58,6 +60,9 @@ it is better than you having to set up a docker-compose version by hand.
 
 There's a lot, but I wanted to deliver this on one week. The first thing is I would refactor the code and inject 
 dependencies in both Producer and Consumer boilerplates to avoid having to patch so many stuff in tests.
+
+Another thing that could be improved is the base docker images. I would use an Alpine or Slim distro installing stuff
+that is required, but opted to simplify this and use a bigger, more complete, image to avoid headaches.
 
 The other point of improvement that I see is that the event_processor could be replaced by a Kafka Streams app. 
 Considering that you want to have a low latency in the platform, Java or Scala are more performant than Python. I know

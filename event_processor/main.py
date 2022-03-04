@@ -23,10 +23,12 @@ message_counter = 0
 
 def main():
     configuration = EventProcessorConfiguration(sys.argv[1:])
+
     logger = get_logger(configuration.event_processor_id)
     logger.info("Parsed Configuration")
 
-    message_consumer = KafkaConsumer(
+    logger.info("Building Kafka Consumer")
+    consumer = KafkaConsumer(
         configuration.schema_registry_url,
         SupportedDeserializers.STRING_DESERIALIZER,
         None,
@@ -37,37 +39,12 @@ def main():
         build_contextual_commit_offsets_callback(logger),
         logger,
     )
-    logger.info("Created Consumer.")
-    message_consumer.subscribe_topic(configuration.kafka_source_topic)
 
-    logger.info(f"Starting consuming {configuration.kafka_source_topic}.")
+    logger.info("Building Kafka Producers")
     output_producers = build_output_producers(configuration, logger)
-    try:
-        while True:
-            try:
-                msg = message_consumer.poll()
-                message_content = ProducerToProcessor(msg.value())
 
-                process_message(
-                    msg.key(),
-                    message_content,
-                    output_producers,
-                    configuration.service_destinations[
-                        message_content.destination_service_type
-                    ]["output_topic"],
-                    build_contextual_callback(configuration, message_consumer, logger),
-                    logger,
-                )
-            except KeyboardInterrupt:
-                logger.info("User asked for termination.")
-                break
-            except SerializerError as e:
-                logger.error(f"Message Deserialization failed {e}")
-                pass
-    finally:
-        for _, producer in output_producers.items():
-            producer.flush_producer()
-        message_consumer.terminate()
+    logger.info("Entering on Main Loop")
+    main_loop(configuration, consumer, output_producers, logger)
 
 
 def build_contextual_commit_offsets_callback(logger):
@@ -95,6 +72,38 @@ def build_output_producers(configuration, logger):
             logger,
         )
     return output_producers
+
+
+def main_loop(configuration, message_consumer, output_producers, logger):
+
+    message_consumer.subscribe_topic(configuration.kafka_source_topic)
+
+    try:
+        while True:
+            try:
+                msg = message_consumer.poll()
+                message_content = ProducerToProcessor(msg.value())
+
+                process_message(
+                    msg.key(),
+                    message_content,
+                    output_producers,
+                    configuration.service_destinations[
+                        message_content.destination_service_type
+                    ]["output_topic"],
+                    build_contextual_callback(configuration, message_consumer, logger),
+                    logger,
+                )
+            except KeyboardInterrupt:
+                logger.info("User asked for termination.")
+                break
+            except SerializerError as e:
+                logger.error(f"Message Deserialization failed {e}")
+                pass
+    finally:
+        for _, producer in output_producers.items():
+            producer.flush_producer()
+        message_consumer.terminate()
 
 
 def process_message(

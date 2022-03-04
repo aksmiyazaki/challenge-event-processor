@@ -93,10 +93,10 @@ class EventProcessorConfiguration:
         self.service_destinations = json.loads(parsed_args.destination_configurations)
         for key, value in self.service_destinations.items():
             if "output_topic" not in value.keys():
-                raise Exception(
+                raise ValueError(
                     "Each service configuration must have an output_topic element."
                 )
             if "output_subject" not in value.keys():
-                raise Exception(
+                raise ValueError(
                     "Each service configuration must have an output_subject element."
                 )
