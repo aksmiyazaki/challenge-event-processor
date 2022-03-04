@@ -4,14 +4,59 @@ An implementation of a challenge that requires a multi-tenant event processor.
 ## Considerations
 - At least once delivery.
 - Kafka will be the persistence layer.
-- 
+
+## Technology Choices
+
+- Python 3.9.2 just because I had it on my pyenv setup.
+- landoop fast-data-dev docker image because it is an environment that I am used to play with on my studies.
+- Kafka because it is a beautiful piece of technology, to be honest I struggled to don't go borderline and use
+[this guy](https://redpanda.com/). But since I have a strong background on Kafka, I chose it. 
+- Avro Data because it is an Industry standard and Kafka deals very well with it. Also, almost all clients have support 
+and it is well optimized in terms of sizing.
+- Schema registry because of its nice integration with Kafka.
 
 
+## Description
 
--> Python 3.9.2 because it was available in pyenv.
--> changed composed schema because of problems with confluent cloud version: https://github.com/confluentinc/schema-registry/issues/1439
--> turn params case insensitive (destination topics)
--> hot partition using the service id as key?
+Since the proposal was to have multi tenant input and a kind of fan out to multiple services, kafka is a very good fit
+for the solution. I've decided to use a single topic for input to the Event Processor, and multiple topics for output.
 
--bootstrap_server localhost:9092 -schema_registry_url http://localhost:8081 -target_topic producer.to.processor -origin_service_type financial -origin_service_id 123456 -list_of_destinations FINANCIAL LOGISTICS marketing -amount_of_messages 10
--bootstrap_server localhost:9092 -schema_registry_url http://localhost:8081 -source_topic producer.to.processor -batch_size_to_commit_offsets 5 -destination_configurations "{"FINANCE": {"output_topic": "finance.processed.events", "output_subject": "processor.to.consumer-value"}, "MARKETING": {"output_topic": "marketing.processed.events", "output_subject": "processor.to.consumer-value"}}" -group_id potato0012211
+![Overview Architecture](./img/overview.png "Overview")
+
+Having a single topic for input, I understood that it is kind of a requirement, although I strongly disagree if the 
+produced events have different schemas. I've simplified here and made a single schema for every event_producer, but 
+again, if the schemas were different, I would put in different topics.
+
+The messages in this topic are keyed by an id of the producers. If there is just a few of event_producers, it may be
+wise to change this key strategy, otherwise, we will end up having hot partitions in the `producer.to.processor` topic.
+
+All the topics in the solution have just 3 partitions, because I guess that evaluating the performance is not an issue
+here. But if we were building a production app, there should be an evaluation on how many partitions each topic would 
+have since partitions define the throughput that the platform can reach.
+
+The `event_processor` is quite simple, it gets messages from the topic, resolving its schema and sends to the 
+appropriate output topic. Schema Registry was used with AVRO since this combination is widely used in the industry and
+have nice features such as Schema Evolution and low overhead on the payload, because it holds just the schema id.
+
+The output topics all have the same schema for simplicity reasons.
+
+## Troubles
+
+I had a trouble composing a schema with two avro schemas. It seems that this was 
+[a thing](https://github.com/confluentinc/schema-registry/issues/1439) with the distro of the Confluent platform inside 
+the environment I was using, so I opted to a simpler schema structure.
+
+Also, making the docker-compose turned out to be a hard task. I wanted to trigger a container startup on termination of
+another one (`condition: service_completed_successfully`), but this is available only in a version of the docker-compose
+that is not in apt or snap. Then, I chose to put a Sleep in the producers and consumers startup. I know this is bad, but
+it is better than you having to set up a docker-compose version by hand.
+
+## Improvements
+
+There's a lot, but I wanted to deliver this on one week. The first thing is I would refactor the code and inject 
+dependencies in both Producer and Consumer boilerplates to avoid having to patch so many stuff in tests.
+
+The other point of improvement that I see is that the event_processor could be replaced by a Kafka Streams app. 
+Considering that you want to have a low latency in the platform, Java or Scala are more performant than Python. I know
+that one of the goals of the test was to evaluate my coding skills in Python, but hey, I can't see a platform that have
+an improvement screaming and don't talk about it.

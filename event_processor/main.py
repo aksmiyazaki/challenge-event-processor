@@ -7,8 +7,8 @@ from logger.boilerplate import get_logger
 from confluent_kafka.avro import SerializerError
 
 from event_processor.configuration.configuration import EventProcessorConfiguration
-from kafka.consumer.boilerplate import KafkaConsumer, SupportedDeserializers
-from kafka.producer.boilerplate import KafkaProducer, SupportedSerializers
+from kafka.consumer.consumer_boilerplate import KafkaConsumer, SupportedDeserializers
+from kafka.producer.producer_boilerplate import KafkaProducer, SupportedSerializers
 from schemas.avro_auto_generated_classes.service_messages.ProcessorToConsumer import ProcessorToConsumer
 from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import ProducerToProcessor
 
@@ -56,8 +56,8 @@ def main():
                 logger.error(f"Message Deserialization failed {e}")
                 pass
     finally:
-        for _, producer_dict in output_producers.items():
-            producer_dict["producer"].flush_producer()
+        for _, producer in output_producers.items():
+            producer.flush_producer()
         message_consumer.terminate()
 
 
@@ -75,15 +75,14 @@ def build_contextual_commit_offsets_callback(logger):
 def build_output_producers(configuration, logger):
     output_producers = {}
     for key, value in configuration.service_destinations.items():
-        output_producers[key] = {}
-        output_producers[key]["producer"] = KafkaProducer(configuration.schema_registry_url,
-                                                          SupportedSerializers.STRING_SERIALIZER,
-                                                          None,
-                                                          SupportedSerializers.AVRO_SERIALIZER,
-                                                          value["output_subject"],
-                                                          configuration.kafka_bootstrap_server,
-                                                          logger)
-        output_producers[key]["messages_sent"] = 0
+        output_producers[key] = KafkaProducer(configuration.schema_registry_url,
+                                              SupportedSerializers.STRING_SERIALIZER,
+                                              None,
+                                              SupportedSerializers.AVRO_SERIALIZER,
+                                              value["output_subject"],
+                                              configuration.kafka_bootstrap_server,
+                                              configuration.no_messages_to_poll,
+                                              logger)
     return output_producers
 
 
@@ -103,14 +102,10 @@ def process_message(key, value_as_object, output_producers, output_topic, produc
         "payload": value_as_object.get_payload()
     })
 
-    output_producers[target_service_type]["producer"].asynchronous_send(topic=output_topic,
-                                                                        key=key,
-                                                                        value=processor_message.dict(),
-                                                                        callback_after_delivery=producing_callback)
-    output_producers[target_service_type]["messages_sent"] += 1
-    if (output_producers[target_service_type]["messages_sent"] % 10) == 0:
-        logger.info(f"Trying to trigger delivery callbacks... {output_producers[target_service_type]['messages_sent']}")
-        output_producers[target_service_type]["producer"].trigger_delivery_callbacks(1.0)
+    output_producers[target_service_type].asynchronous_send(topic=output_topic,
+                                                            key=key,
+                                                            value=processor_message.dict(),
+                                                            callback_after_delivery=producing_callback)
 
 
 def build_contextual_callback(configuration, consumer, logger):

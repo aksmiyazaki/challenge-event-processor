@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import sys
 from time import sleep
 
-from kafka.producer.boilerplate import KafkaProducer, SupportedSerializers
+from kafka.producer.producer_boilerplate import KafkaProducer, SupportedSerializers
 from logger.boilerplate import get_logger
 from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import ProducerToProcessor
 
@@ -19,9 +19,10 @@ def main():
                                      SupportedSerializers.AVRO_SERIALIZER,
                                      f"{cli_args.target_topic}-value",
                                      cli_args.kafka_bootstrap_server,
+                                     cli_args.no_messages_before_poll,
                                      logger)
     try:
-        logger.info(f"Starting producing messager, will produce {cli_args.amount_of_messages} "
+        logger.info(f"Starting producing messages, will produce {cli_args.amount_of_messages} "
                     f"messages of {cli_args.list_of_destinations} destination types")
 
         for iterator in range(cli_args.amount_of_messages):
@@ -43,10 +44,6 @@ def main():
                                                key=cli_args.origin_service_id,
                                                value=message.dict(),
                                                callback_after_delivery=produce_callback)
-
-            if (iterator % cli_args.amount_of_sends_before_flush) == 0:
-                logger.info("Trying to trigger delivery callbacks")
-                message_producer.trigger_delivery_callbacks(1.0)
 
             if cli_args.sleep_between_messages_in_seconds > 0:
                 sleep(cli_args.sleep_between_messages_in_seconds)
@@ -98,17 +95,17 @@ def parse_cli_arguments(args_list):
                         help="Amount of messages to send.",
                         required=True)
 
-    parser.add_argument("-flush_timeout_in_seconds",
-                        dest="flush_timeout_in_seconds",
+    parser.add_argument("-sleep_between_messages_in_seconds",
+                        dest="sleep_between_messages_in_seconds",
                         type=int,
                         help="Sleep between messages.",
                         default=0,
                         required=False)
 
-    parser.add_argument("-amount_of_sends_before_flush",
-                        dest="amount_of_sends_before_flush",
+    parser.add_argument("-no_messages_before_poll",
+                        dest="no_messages_before_poll",
                         type=int,
-                        help="Amount of messages before flushing.",
+                        help="Number of messages before trying to poll for callbacks.",
                         default=10,
                         required=False)
 

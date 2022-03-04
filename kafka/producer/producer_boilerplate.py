@@ -19,12 +19,14 @@ class KafkaProducer:
                  value_serializer_type,
                  value_serializer_subject,
                  bootstrap_servers,
-                 logger):
-        self.__bootstrap_servers = bootstrap_servers
-        self.__schema_registry_url = schema_registry_url
+                 messages_to_poll,
+                 logger,
+                 must_initialize=True):
         self.schema_registry_conf = {
-            'url': self.__schema_registry_url
+            'url': schema_registry_url
         }
+        self.messages_to_poll = messages_to_poll
+        self.__bootstrap_servers = bootstrap_servers
         self.__schema_registry_client = None
         self.__key_serializer_type = key_serializer_type
         self.__key_serializer_subject = key_serializer_subject
@@ -35,8 +37,11 @@ class KafkaProducer:
         self.__producer_config = {}
         self.__producer = None
         self.__logger = logger
-        logger.info("Initializing producer")
-        self.initialize()
+        self.__amount_of_messages_sent = 0
+
+        if must_initialize:
+            logger.info("Initializing producer")
+            self.initialize()
 
     def initialize(self):
         self.__schema_registry_client = SchemaRegistryClient(self.schema_registry_conf)
@@ -64,21 +69,23 @@ class KafkaProducer:
             return None
 
     def build_serializer(self, serializer_type, schema):
-        if serializer_type not in SupportedSerializers:
-            raise Exception(f"{serializer_type} is not supported. Supported types are: {SupportedSerializers}.")
-
         if serializer_type == SupportedSerializers.STRING_SERIALIZER:
             return StringSerializer()
         elif serializer_type == SupportedSerializers.AVRO_SERIALIZER:
-            if schema is None or schema.schema.schema_str == "":
-                raise Exception(f"Cannot encode {SupportedSerializers.AVRO_SERIALIZER} without a Schema")
+            if schema is None or schema.schema.schema_str is None or schema.schema.schema_str == "":
+                raise ValueError(f"Cannot encode {SupportedSerializers.AVRO_SERIALIZER} without a Schema")
             return AvroSerializer(self.__schema_registry_client, schema.schema.schema_str)
 
     def asynchronous_send(self, key, value, topic, callback_after_delivery):
+        self.__amount_of_messages_sent += 1
+        if (self.__amount_of_messages_sent % self.messages_to_poll) == 0:
+            self.__logger.info(f"Trying to poll for callbacks, produced {self.__amount_of_messages_sent} messages")
+            self.trigger_delivery_callbacks(1.0)
+
         return self.__producer.produce(topic=topic,
-                                key=key,
-                                value=value,
-                                on_delivery=callback_after_delivery)
+                                       key=key,
+                                       value=value,
+                                       on_delivery=callback_after_delivery)
 
     def trigger_delivery_callbacks(self, timeout_in_seconds=0.0):
         self.__producer.poll(timeout_in_seconds)

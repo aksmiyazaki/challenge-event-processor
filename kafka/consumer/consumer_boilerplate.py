@@ -21,7 +21,8 @@ class KafkaConsumer:
                  group_id,
                  bootstrap_servers,
                  callback_commit_offsets,
-                 logger):
+                 logger,
+                 must_initialize=True):
         self.__commit_offsets_callback = callback_commit_offsets
         self.__group_id = group_id
         self.__bootstrap_servers = bootstrap_servers
@@ -39,8 +40,10 @@ class KafkaConsumer:
         self.__consumer_config = {}
         self.__consumer = None
         self.__logger = logger
-        logger.info("Initializing consumer...")
-        self.initialize()
+
+        if must_initialize:
+            logger.info("Initializing consumer...")
+            self.initialize()
 
     def initialize(self):
         self.__schema_registry_client = SchemaRegistryClient(self.schema_registry_conf)
@@ -72,14 +75,11 @@ class KafkaConsumer:
             return None
 
     def build_deserializer(self, serializer_type, schema):
-        if serializer_type not in SupportedDeserializers:
-            raise Exception(f"{serializer_type} is not supported. Supported types are: {SupportedDeserializers}.")
-
         if serializer_type == SupportedDeserializers.STRING_DESERIALIZER:
             return StringDeserializer()
         elif serializer_type == SupportedDeserializers.AVRO_DESERIALIZER:
-            if schema is None or schema.schema.schema_str == "":
-                raise Exception(f"Cannot encode {SupportedDeserializers.AVRO_DESERIALIZER} without a Schema")
+            if schema is None or schema.schema.schema_str is None or schema.schema.schema_str == "":
+                raise ValueError(f"Cannot encode {SupportedDeserializers.AVRO_DESERIALIZER} without a Schema")
             return AvroDeserializer(self.__schema_registry_client, schema.schema.schema_str)
 
     def subscribe_topic(self, topic):

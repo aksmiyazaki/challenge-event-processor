@@ -56,6 +56,13 @@ class EventProcessorConfiguration:
                                  "\"output_subject\": \"marketing.topic-value\"}",
                             required=True)
 
+        parser.add_argument("-no_messages_before_poll_producers",
+                            dest="no_messages_to_poll",
+                            type=int,
+                            help="Number of messages before calling poll into producers.",
+                            default=5,
+                            required=False)
+
         parsed_args = parser.parse_args(args_list)
         self.event_processor_id = parsed_args.processor_id
         self.kafka_bootstrap_server = parsed_args.kafka_bootstrap_server
@@ -63,6 +70,8 @@ class EventProcessorConfiguration:
         self.schema_registry_url = parsed_args.schema_registry_url
         self.group_id = parsed_args.group_id
         self.batch_size_to_commit_offsets = parsed_args.batch_size_to_commit_offsets
+        self.no_messages_to_poll = parsed_args.no_messages_to_poll
+
         self.service_destinations = json.loads(parsed_args.destination_configurations)
         for key, value in self.service_destinations.items():
             if "output_topic" not in value.keys():
