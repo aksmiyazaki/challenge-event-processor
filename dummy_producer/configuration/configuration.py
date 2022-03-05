@@ -81,7 +81,7 @@ class ProducerConfiguration:
         parsed_args = parser.parse_args(args_list)
         parsed_args.list_of_destinations = [str.upper(el) for el in parsed_args.list_of_destinations]
 
-        self.kafka_bootstrap_server = parsed_args.bootstrap_server
+        self.kafka_bootstrap_server = parsed_args.kafka_bootstrap_server
         self.kafka_output_topic = parsed_args.target_topic
         self.schema_registry_url = parsed_args.schema_registry_url
         self.origin_service_type = parsed_args.origin_service_type

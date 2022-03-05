@@ -1,4 +1,3 @@
-import argparse
 import uuid
 from datetime import datetime, timezone
 import sys
