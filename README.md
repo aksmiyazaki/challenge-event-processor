@@ -64,6 +64,27 @@ architecture, it could be used a Sink Kafka Connect connector from Kafka to a bl
 
 The output topics all have the same schema for simplicity reasons.
 
+## About the Event Processor code
+
+There's just one thing that I want to well described in docs about the code. Since we are consuming from a topic
+and producing in an asynchronous way, the logic of committing got more complex than I expected. It works this way:
+
+- Poll for a message on the consumer.
+- Next, add it to an on flight queue of messages, which have messages that are being processed.
+- Then, transform the message and send in an asynchronous way to the output topic. Since this step is asynchronous, 
+a callback is registered.
+- Next, when the callback is triggered, we get the message out of the on flight queue of messages and add 1 to processed
+messages counter.
+- Then update an internal structure with information about topic/partition/offset of everything that has been processed
+so far.
+- Finally, if the amount of messages processed is divisible by the amount of processed messages before committing 
+offsets (a parameter), then we get the internal structure with topic/partition/offset information, put this in a list
+structure of `TopicPartition` objects, adding 1 to offset because the logic of the offsets is the next message to be 
+read, and send it to Kafka.
+
+If the application breaks, this logic guarantees at least once delivery guarantees, because we only commit things that 
+are already on kafka.
+
 ## Troubles
 
 I had trouble composing a schema with two avro schemas. It seems that this was
