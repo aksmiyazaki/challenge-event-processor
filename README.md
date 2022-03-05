@@ -12,6 +12,12 @@ To run locally (without docker), do:
 - `make local-register-schemas`
 
 And run the application with the root of the project on PYTHONPATH, otherwise, you will get import errors.
+Below, there's the parameters list that were used in a point of time while I was testing:
+
+Producer:
+```
+-bootstrap_server localhost:9092 -schema_registry_url http://localhost:8081 -target_topic producer.to.processor -origin_service_type financial -origin_service_id 123456 -list_of_destinations FINANCE marketing -amount_of_messages 8 -sleep_between_messages_in_seconds 1 -log_level INFO
+```
 
 ## Requirements
 Unix environment (make), Docker (mine is 20.10.12) and docker-compose (mine is 1.28.5).
