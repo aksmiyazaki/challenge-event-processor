@@ -22,31 +22,29 @@ class KafkaConsumer:
             value_deserializer_subject,
             kafka_consumer_group_id,
             kafka_bootstrap_servers,
-            messages_processed_before_commit_offsets,
+            amount_of_messages_processes_to_commit_offsets,
             callback_after_committing_offsets,
             logger,
             must_initialize=True,
     ):
         self.__commit_offsets_callback = callback_after_committing_offsets
-        self.__group_id = kafka_consumer_group_id
+        self.__kafka_consumer_group_id = kafka_consumer_group_id
         self.__bootstrap_servers = kafka_bootstrap_servers
-        self.__schema_registry_url = schema_registry_url
-        self.schema_registry_conf = {"url": self.__schema_registry_url}
-        self.__schema_registry_client = None
         self.__key_deserializer_type = key_deserializer_type
         self.__key_deserializer_subject = key_deserializer_subject
         self.__value_deserializer_type = value_deserializer_type
         self.__value_deserializer_subject = value_deserializer_subject
-        self.__key_deserialization_schema = None
-        self.__value_deserialization_schema = None
-        self.__consumer_config = {}
-        self.__consumer = None
         self.__logger = logger
-        self.__messages_processed_before_commit_offsets = messages_processed_before_commit_offsets
-        self.__messages_being_processed = Queue()
-        self.__current_offsets = {}
+        self.__amount_of_messages_processed_to_commit_offsets = amount_of_messages_processes_to_commit_offsets
+        self.__schema_registry_client = None
+        self.__value_deserialization_schema = None
+        self.__key_deserialization_schema = None
+        self.__consumer = None
+        self.__on_flight_message_queue = Queue()
+        self.__last_known_offsets = {}
+
+        self.schema_registry_conf = {"url": schema_registry_url}
         self.messages_processed = 0
-        self.__polls_without_commiting_offsets = 0
 
         if must_initialize:
             logger.info("Initializing consumer...")
@@ -68,14 +66,11 @@ class KafkaConsumer:
             self.__value_deserializer_type, self.__value_deserialization_schema
         )
 
-        self.__consumer_config["key.deserializer"] = key_deserializer
-        self.__consumer_config["value.deserializer"] = value_deserializer
-        self.__consumer_config["bootstrap.servers"] = self.__bootstrap_servers
-        self.__consumer_config["group.id"] = self.__group_id
-        self.__consumer_config["auto.offset.reset"] = "earliest"
-        self.__consumer_config["enable.auto.commit"] = False
-        self.__consumer_config["on_commit"] = self.__commit_offsets_callback
-        self.__consumer = DeserializingConsumer(self.__consumer_config)
+        consumer_config = {"key.deserializer": key_deserializer, "value.deserializer": value_deserializer,
+                           "bootstrap.servers": self.__bootstrap_servers, "group.id": self.__kafka_consumer_group_id,
+                           "auto.offset.reset": "earliest", "enable.auto.commit": False,
+                           "on_commit": self.__commit_offsets_callback}
+        self.__consumer = DeserializingConsumer(consumer_config)
 
     def fetch_deserialization_schema(self, serializer_type, subject_name):
         if serializer_type == SupportedDeserializers.AVRO_DESERIALIZER:
@@ -101,38 +96,45 @@ class KafkaConsumer:
         if msg.error():
             raise KafkaException(msg.error())
         else:
-            self.__messages_being_processed.put(msg)
+            self.__on_flight_message_queue.put(msg)
             return msg
 
     def terminate(self):
+        self.__handle_offset_commits(False)
         self.__consumer.close()
 
     def signalize_message_processed(self):
-        msg = self.__messages_being_processed.get()
+        msg = self.__on_flight_message_queue.get()
         self.messages_processed += 1
 
-        if msg.topic() not in self.__current_offsets:
-            self.__current_offsets[msg.topic()] = {}
+        self.__handle_topic_on_offsets_control(msg.topic())
+        self.__update_partition_of_message(msg)
 
-        self.__current_offsets[msg.topic()][msg.partition()] = TopicPartition(msg.topic(), msg.partition(),
-                                                                              msg.offset())
-        if (self.messages_processed % self.__messages_processed_before_commit_offsets) == 0:
-            self.__logger.info(f"Committing offsets after {self.messages_processed} messages")
-            list_to_commit = self.convert_control_offset_dictionary_to_list(self.__current_offsets)
-            self.__logger.info(f"This is the list of offsets being commited: {list_to_commit}")
-            self.__consumer.commit(offsets=list_to_commit, asynchronous=True)
+        if (self.messages_processed % self.__amount_of_messages_processed_to_commit_offsets) == 0:
+            self.__handle_offset_commits()
 
-    def convert_control_offset_dictionary_to_list(self, current_offsets):
+    def __handle_topic_on_offsets_control(self, topic):
+        if topic not in self.__last_known_offsets:
+            self.__last_known_offsets[topic] = {}
+
+    def __update_partition_of_message(self, msg):
+        self.__last_known_offsets[msg.topic()][msg.partition()] = TopicPartition(msg.topic(),
+                                                                                 msg.partition(),
+                                                                                 msg.offset())
+
+    def __handle_offset_commits(self, asynchronous=True):
+        list_to_commit = self.__convert_control_offset_dictionary_to_list()
+        self.__logger.info(
+            f"After {self.messages_processed} messages this is the list of offsets being commited: {list_to_commit}")
+        self.__consumer.commit(offsets=list_to_commit, asynchronous=asynchronous)
+
+    def __convert_control_offset_dictionary_to_list(self):
         list_of_partitions = []
-        for _, partitions in current_offsets.items():
+        for _, partitions in self.__last_known_offsets.items():
             for _, partition_object in partitions.items():
                 partition_object.offset += 1
                 list_of_partitions.append(partition_object)
         return list_of_partitions
-
-    def handle_offsets(self):
-        if (self.messages_processed % self.__messages_processed_before_commit_offsets) == 0:
-            self.__consumer.commit(asynchronous=True)
 
     def subscribe_topic(self, topic):
         self.__consumer.subscribe([topic])

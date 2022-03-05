@@ -1,6 +1,7 @@
 from unittest import mock
 from unittest.mock import Mock
 
+import pytest
 from confluent_kafka import KafkaError
 from confluent_kafka.avro import SerializerError
 
@@ -10,7 +11,7 @@ from event_processor.main import (
     main_loop,
     fetch_message_from_kafka,
     transform_message_to_target_consumer_service,
-    send_message_to_downstream_service_topic,
+    send_message_to_downstream_service_topic, build_contextual_delivered_message_callback,
 )
 
 
@@ -21,8 +22,8 @@ def test_error_on_contextual_commit_callback():
     err = Mock()
 
     err.code.return_value = 123123
-    callback(err, Mock())
-    logger.error.assert_called_once()
+    with pytest.raises(RuntimeError):
+        callback(err, Mock())
 
 
 def test_end_of_partition_on_contextual_commit_callback():
@@ -170,7 +171,26 @@ def test_failure_send_message_to_downstream_non_existent_service():
         assert "No destination for" in str(ex)
 
 
-def test_contextual_commit_callback():
+def test_message_delivered_callback():
+    consumer = Mock()
     logger = Mock()
+    err = None
+    msg = Mock()
 
-    callback = build_contextual_commit_offsets_callback(logger)
+    callback = build_contextual_delivered_message_callback(consumer, logger)
+
+    callback(err, msg)
+
+    consumer.signalize_message_processed.assert_called_once()
+
+
+def test_message_fails_deliver_callback():
+    consumer = Mock()
+    logger = Mock()
+    err = "Something"
+    msg = Mock()
+
+    callback = build_contextual_delivered_message_callback(consumer, logger)
+
+    with pytest.raises(RuntimeError):
+        callback(err, msg)

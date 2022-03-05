@@ -88,3 +88,6 @@ The other point of improvement that I see is that the event_processor could be r
 Considering that you want to have a low latency in the platform, Java or Scala are more performant than Python. I know
 that one of the goals of the test was to evaluate my coding skills in Python, but hey, I can't see a platform that have
 an improvement screaming and don't talk about it.
+
+
+-> Mudança de key

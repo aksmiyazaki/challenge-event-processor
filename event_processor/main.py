@@ -49,6 +49,7 @@ def build_contextual_commit_offsets_callback(logger):
                 logger.info("End of partition event.")
             else:
                 logger.error(str(err))
+                raise RuntimeError("Error commiting offsets, quiting application.")
         else:
             logger.info(f"Committed partition offsets: {str(partitions)}")
 
@@ -71,11 +72,11 @@ def build_output_producers(configuration, logger):
     return output_producers
 
 
-def main_loop(configuration, message_consumer, output_producers, logger, is_running=True):
+def main_loop(configuration, message_consumer, output_producers, logger):
     message_consumer.subscribe_topic(configuration.kafka_source_topic)
 
     try:
-        while is_running:
+        while True:
             try:
                 origin_key, origin_service_message = fetch_message_from_kafka(message_consumer)
 
@@ -93,10 +94,10 @@ def main_loop(configuration, message_consumer, output_producers, logger, is_runn
                 )
             except KeyboardInterrupt:
                 logger.info("User asked for termination.")
-                is_running = False
+                break
             except SerializerError as e:
                 logger.error(f"Message Deserialization failed {e}. Ending this process.")
-                is_running = False
+                break
     finally:
         for _, producer in output_producers.items():
             producer.flush_producer()
@@ -152,7 +153,7 @@ def send_message_to_downstream_service_topic(
 def build_contextual_delivered_message_callback(consumer, logger):
     def control_messages_processed(err, msg):
         if err:
-            logger.error(f"Couldn't deliver message: {msg.key()} {msg.value()}")
+            raise RuntimeError(f"Couldn't deliver message: {msg.key()} {msg.value()}")
         else:
             consumer.signalize_message_processed()
             logger.debug(f"Send Message Successful, {consumer.messages_processed}")

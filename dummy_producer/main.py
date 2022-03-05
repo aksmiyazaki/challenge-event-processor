@@ -40,7 +40,7 @@ def main_loop(configuration, message_producer, logger):
             send_async_message(
                 message_producer,
                 configuration.kafka_output_topic,
-                configuration.origin_service_id,
+                f"{configuration.origin_service_id}:{message.get_destination_service_type()}",
                 message,
                 build_produce_contextual_callback(logger),
             )

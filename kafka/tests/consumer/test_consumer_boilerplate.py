@@ -2,6 +2,7 @@ from unittest import mock
 from unittest.mock import Mock
 
 import pytest
+from confluent_kafka import KafkaException
 
 from kafka.consumer.consumer_boilerplate import KafkaConsumer, SupportedDeserializers
 
@@ -33,7 +34,7 @@ def built_object():
 
 def test_successfully_initialize(built_object):
     with mock.patch(
-        "kafka.consumer.consumer_boilerplate.DeserializingConsumer", autospec=True
+            "kafka.consumer.consumer_boilerplate.DeserializingConsumer", autospec=True
     ) as ConsumerMock, mock.patch(
         "kafka.consumer.consumer_boilerplate.SchemaRegistryClient", autospec=True
     ) as SchemaRegistryMock:
@@ -80,7 +81,7 @@ def test_fetch_string_deserialization_schema(built_object):
 
 def test_build_string_deserializer(built_object):
     with mock.patch(
-        "kafka.consumer.consumer_boilerplate.StringDeserializer", autospec=True
+            "kafka.consumer.consumer_boilerplate.StringDeserializer", autospec=True
     ) as mock_string_deserializer:
         built_object.build_deserializer(SupportedDeserializers.STRING_DESERIALIZER, None)
         mock_string_deserializer.assert_called_once()
@@ -88,7 +89,7 @@ def test_build_string_deserializer(built_object):
 
 def test_build_avro_serializer(built_object):
     with mock.patch(
-        "kafka.consumer.consumer_boilerplate.AvroDeserializer", autospec=True
+            "kafka.consumer.consumer_boilerplate.AvroDeserializer", autospec=True
     ) as mock_avro_deserializer, mock.patch.object(
         built_object, "_KafkaConsumer__schema_registry_client"
     ) as mocked_schema_registry:
@@ -122,3 +123,42 @@ def test_fails_building_avro_serializer_with_empty_schema_str(built_object):
     schema.schema.schema_str = ""
     with pytest.raises(ValueError):
         built_object.build_deserializer(SupportedDeserializers.AVRO_DESERIALIZER, schema)
+
+
+def test_default_poll(built_object):
+    with mock.patch.object(
+            built_object, "_KafkaConsumer__consumer"
+    ) as mocked_consumer, mock.patch.object(
+        built_object, "_KafkaConsumer__on_flight_message_queue"
+    ) as mocked_queue:
+        mocked_msg = Mock()
+        mocked_msg.error.return_value = None
+        mocked_consumer.poll.return_value = mocked_msg
+
+        built_object.poll()
+
+        mocked_consumer.poll.assert_called_once()
+        mocked_queue.put.assert_called_once_with(mocked_msg)
+
+
+def test_default_poll(built_object):
+    with mock.patch.object(
+            built_object, "_KafkaConsumer__consumer"
+    ) as mocked_consumer:
+        mocked_msg = Mock()
+        mocked_msg.error.return_value = "something"
+        mocked_consumer.poll.return_value = mocked_msg
+
+        with pytest.raises(KafkaException):
+            built_object.poll()
+
+
+def test_terminate(built_object):
+    with mock.patch.object(
+            built_object, "_KafkaConsumer__handle_offset_commits"
+    ) as mocked_handle_commits, mock.patch.object(
+        built_object, "_KafkaConsumer__consumer"
+    ) as mocked_consumer:
+        built_object.terminate()
+        mocked_handle_commits.assert_called_once_with(False)
+        mocked_consumer.close.assert_called_once_with()
