@@ -100,7 +100,7 @@ class KafkaConsumer:
             return msg
 
     def terminate(self):
-        self.__handle_offset_commits(False)
+        self.handle_offset_commits(False)
         self.__consumer.close()
 
     def signalize_message_processed(self):
@@ -111,7 +111,7 @@ class KafkaConsumer:
         self.__update_partition_of_message(msg)
 
         if (self.messages_processed % self.__amount_of_messages_processed_to_commit_offsets) == 0:
-            self.__handle_offset_commits()
+            self.handle_offset_commits()
 
     def __handle_topic_on_offsets_control(self, topic):
         if topic not in self.__last_known_offsets:
@@ -122,7 +122,10 @@ class KafkaConsumer:
                                                                                  msg.partition(),
                                                                                  msg.offset())
 
-    def __handle_offset_commits(self, asynchronous=True):
+    def get_last_known_offsets(self):
+        return self.__last_known_offsets.copy()
+
+    def handle_offset_commits(self, asynchronous=True):
         list_to_commit = self.__convert_control_offset_dictionary_to_list()
         self.__logger.info(
             f"After {self.messages_processed} messages this is the list of offsets being commited: {list_to_commit}")

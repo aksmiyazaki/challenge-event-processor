@@ -2,7 +2,7 @@ from unittest import mock
 from unittest.mock import Mock
 
 import pytest
-from confluent_kafka import KafkaException
+from confluent_kafka import KafkaException, TopicPartition
 
 from kafka.consumer.consumer_boilerplate import KafkaConsumer, SupportedDeserializers
 
@@ -155,10 +155,76 @@ def test_default_poll(built_object):
 
 def test_terminate(built_object):
     with mock.patch.object(
-            built_object, "_KafkaConsumer__handle_offset_commits"
-    ) as mocked_handle_commits, mock.patch.object(
         built_object, "_KafkaConsumer__consumer"
     ) as mocked_consumer:
+        mocked_handle_commits = Mock()
+        built_object.handle_offset_commits = mocked_handle_commits
         built_object.terminate()
         mocked_handle_commits.assert_called_once_with(False)
         mocked_consumer.close.assert_called_once_with()
+
+
+def test_signalize_message_processed_without_offset_commit(built_object):
+    expected_topic_partition = TopicPartition("dummy.topic", 1, 42)
+    with mock.patch.object(
+            built_object, "_KafkaConsumer__on_flight_message_queue"
+    ) as mocked_queue:
+        mocked_msg = Mock()
+        mocked_msg.topic.return_value = "dummy.topic"
+        mocked_msg.partition.return_value = 1
+        mocked_msg.offset.return_value = 42
+        built_object.messages_processed = 1
+
+        mocked_queue.get.return_value = mocked_msg
+        built_object.signalize_message_processed()
+        offsets = built_object.get_last_known_offsets()
+
+        assert built_object.messages_processed == 2
+        assert "dummy.topic" in offsets
+        assert 1 in offsets["dummy.topic"]
+        assert offsets["dummy.topic"][1].topic == expected_topic_partition.topic
+        assert offsets["dummy.topic"][1].offset == expected_topic_partition.offset
+        assert offsets["dummy.topic"][1].partition == expected_topic_partition.partition
+
+
+def test_signalize_message_processed_with_offset_commit(built_object):
+    expected_topic_partition = TopicPartition("dummy.topic", 1, 42)
+    with mock.patch.object(
+            built_object, "_KafkaConsumer__on_flight_message_queue"
+    ) as mocked_queue:
+        mocked_msg = Mock()
+        mocked_msg.topic.return_value = "dummy.topic"
+        mocked_msg.partition.return_value = 1
+        mocked_msg.offset.return_value = 42
+
+        built_object.messages_processed = 9
+        built_object.handle_offset_commits = Mock()
+
+        mocked_queue.get.return_value = mocked_msg
+        built_object.signalize_message_processed()
+        offsets = built_object.get_last_known_offsets()
+
+        assert built_object.messages_processed == 10
+        assert "dummy.topic" in offsets
+        assert 1 in offsets["dummy.topic"]
+        assert offsets["dummy.topic"][1].topic == expected_topic_partition.topic
+        assert offsets["dummy.topic"][1].offset == expected_topic_partition.offset
+        assert offsets["dummy.topic"][1].partition == expected_topic_partition.partition
+        built_object.handle_offset_commits.assert_called_once()
+
+
+def test_handle_offset_commits(built_object):
+    with mock.patch.object(
+            built_object, "_KafkaConsumer__last_known_offsets"
+    ) as mocked_last_offsets, mock.patch.object(
+            built_object, "_KafkaConsumer__consumer"
+    ) as mocked_consumer:
+        p1 = TopicPartition("dummy.topic", 1, 42)
+        p2 = TopicPartition("dummy.topic", 2, 666)
+        mocked_last_offsets.items.return_value = {"dummy.topic": {1: p1, 2: p2}}.items()
+
+        built_object.handle_offset_commits()
+        mocked_consumer.commit.assert_called_once()
+        assert mocked_consumer.commit.call_args_list[0][1]["offsets"][0].offset == 43
+        assert mocked_consumer.commit.call_args_list[0][1]["offsets"][1].offset == 667
+
