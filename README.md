@@ -1,57 +1,73 @@
 ## Event Processor
+
 An implementation of a challenge that requires a multi-tenant event processor.
 
+## How do I run this thing?
+There's information for every command by executing `make help`.
+To run locally (without docker), do:
+
+- `make local-setup`
+- `make local-docker-compose-spinup`
+- `make local-generate-classes-from-avro-schemas`
+- `make local-register-schemas`
+
+And run the application with the root of the project on PYTHONPATH, otherwise, you will get import errors.
+
+## Requirements
+Unix environment (make), Docker (mine is 20.10.12) and docker-compose (mine is 1.28.5).
+
 ## Considerations
+
 - At least once delivery.
 - Kafka will be the persistence layer.
-- All the code (except for the tests) is made to be read from top to bottom. Methods are ordered by its call order, 
-as any code should be done.
+- All the code (except for the tests) is made to be read from top to bottom. Methods are ordered by its call order, as
+  any code should be done, according to Robert C. Martin's
+  [Clean Code](https://www.amazon.com.br/Clean-Code-Handbook-Software-Craftsmanship/dp/0132350882/ref=asc_df_0132350882/?tag=googleshopp00-20&linkCode=df0&hvadid=379787788238&hvpos=&hvnetw=g&hvrand=11862824861617951348&hvpone=&hvptwo=&hvqmt=&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=9102225&hvtargid=pla-435472505264&psc=1).
+- 
 
 ## Technology Choices
 
 - Python 3.9.2 just because I had it on my pyenv setup.
-- Black as linter, just because its popularity. I had to go back a few versions in order to avoid dependency conflicts.
-- landoop fast-data-dev docker image because it is an environment that I am used to play with on my studies.
+- Black as linter, because of its popularity. I had to go back a few versions in order to avoid dependency conflicts.
+- landoop fast-data-dev docker image because it is an environment that I am used to play with in my studies.
 - Kafka because it is a beautiful piece of technology, to be honest I struggled to don't go borderline and use
-[this guy](https://redpanda.com/). But since I have a strong background on Kafka, I chose it. 
-- Avro Data because it is an Industry standard and Kafka deals very well with it. Also, almost all clients have support 
-and it is well optimized in terms of sizing.
+  [this guy](https://redpanda.com/). But since I have a strong background on Kafka, I chose it.
+- Avro Data because it is an Industry standard and Kafka deals very well with it. Also, almost all clients have support
+  and it is well optimized in terms of sizing.
 - Schema registry because of its nice integration with Kafka.
-
 
 ## Description
 
-Since the proposal was to have multi tenant input and a kind of fan out to multiple services, kafka is a very good fit
+Since the proposal was to have multi tenant input and a kind of fan out to multiple services, Kafka is a very good fit
 for the solution. I've decided to use a single topic for input to the Event Processor, and multiple topics for output.
 
 ![Overview Architecture](./img/overview.png "Overview")
 
-Having a single topic for input, I understood that it is kind of a requirement, although I strongly disagree if the 
-produced events have different schemas. I've simplified here and made a single schema for every event_producer, but 
+Having a single topic for input, I understood that it is kind of a requirement, although I strongly disagree if the
+produced events have different schemas. I've simplified here and made a single schema for every `event_producer`, but
 again, if the schemas were different, I would put in different topics.
 
-The messages in this topic are keyed by an id of the producers. If there is just a few of event_producers, it may be
+The messages in this topic are keyed by an id of the producers. If there is just a few of `event_producers`, it may be
 wise to change this key strategy, otherwise, we will end up having hot partitions in the `producer.to.processor` topic.
-One thing that worth mentioning is that I didn't care much about the code in the producers since it is not the asset
-being evaluated according to the challenge description.
 
 All the topics in the solution have just 3 partitions, because I guess that evaluating the performance is not an issue
-here. But if we were building a production app, there should be an evaluation on how many partitions each topic would 
+here. But if we were building a production app, there should be an evaluation on how many partitions each topic should
 have since partitions define the throughput that the platform can reach.
 
-The `event_processor` is quite simple, it gets messages from the topic, resolving its schema and sends to the 
+The `event_processor` is quite simple, it gets messages from the topic, resolving its schema and sends to the
 appropriate output topic. Schema Registry was used with AVRO since this combination is widely used in the industry and
 have nice features such as Schema Evolution and low overhead on the payload, because it holds just the schema id. Also,
 for the persistence layer, we've used Kafka itself. It is easy to add a long retention persistence component in this
-architecture, it could be used a Sink Kafka Connect connector from Kafka to a blob storage (s3, Azure Blob Storage, GCS).
+architecture, it could be used a Sink Kafka Connect connector from Kafka to a blob storage (s3, Azure Blob Storage, GCS)
+.
 
 The output topics all have the same schema for simplicity reasons.
 
 ## Troubles
 
-I had a trouble composing a schema with two avro schemas. It seems that this was 
-[a thing](https://github.com/confluentinc/schema-registry/issues/1439) with the distro of the Confluent platform inside 
-the environment I was using, so I opted to a simpler schema structure.
+I had trouble composing a schema with two avro schemas. It seems that this was
+[a thing](https://github.com/confluentinc/schema-registry/issues/1439) with the distro of the Confluent platform inside
+the environment I was using, so I opted for a simpler schema structure.
 
 Also, making the docker-compose turned out to be a hard task. I wanted to trigger a container startup on termination of
 another one (`condition: service_completed_successfully`), but this is available only in a version of the docker-compose
@@ -60,16 +76,15 @@ it is better than you having to set up a docker-compose version by hand.
 
 ## Improvements
 
-There's a lot, but I wanted to deliver this on one week. The first thing is I would refactor the code and inject 
-dependencies in both Producer and Consumer boilerplates to avoid having to patch so many stuff in tests.
+The first thing is I would refactor the code and inject dependencies in both Producer and Consumer boilerplates
+to avoid having to patch so many stuff in tests. When tests gets tricky to write, it indicates a problem in the
+software architecture. I don't think that it is terrible (otherwise, I wouldn't submit for review), but I do think
+that there's space for improvements.
 
 Another thing that could be improved is the base docker images. I would use an Alpine or Slim distro installing stuff
 that is required, but opted to simplify this and use a bigger, more complete, image to avoid headaches.
 
-The other point of improvement that I see is that the event_processor could be replaced by a Kafka Streams app. 
+The other point of improvement that I see is that the event_processor could be replaced by a Kafka Streams app.
 Considering that you want to have a low latency in the platform, Java or Scala are more performant than Python. I know
 that one of the goals of the test was to evaluate my coding skills in Python, but hey, I can't see a platform that have
 an improvement screaming and don't talk about it.
-
-
-> Talk about serialization errors

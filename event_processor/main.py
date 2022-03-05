@@ -14,13 +14,14 @@ from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor im
 
 from datetime import datetime, timezone
 
+# Global counter to know when commit offsets
 message_counter = 0
 
 
 def main():
     configuration = EventProcessorConfiguration(sys.argv[1:])
 
-    logger = get_logger(configuration.event_processor_id)
+    logger = get_logger(configuration.event_processor_id, configuration.log_level)
     logger.info("Parsed Configuration")
 
     logger.info("Building Kafka Consumer")

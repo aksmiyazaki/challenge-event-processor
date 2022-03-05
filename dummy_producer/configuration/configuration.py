@@ -1,4 +1,5 @@
 import argparse
+import logging
 
 
 class ProducerConfiguration:
@@ -78,6 +79,14 @@ class ProducerConfiguration:
             required=False,
         )
 
+        parser.add_argument(
+            "-log_level",
+            dest="log_level",
+            default=logging.DEBUG,
+            type=lambda x: getattr(logging, x),
+            help="Log Level: INFO, DEBUG, ERROR, CRITICAL"
+        )
+
         parsed_args = parser.parse_args(args_list)
         parsed_args.list_of_destinations = [str.upper(el) for el in parsed_args.list_of_destinations]
 
@@ -90,3 +99,4 @@ class ProducerConfiguration:
         self.amount_of_messages_to_produce = parsed_args.amount_of_messages
         self.sleep_between_messages_in_seconds = parsed_args.sleep_between_messages_in_seconds
         self.amount_of_messages_before_poll = parsed_args.amount_of_messages_before_poll
+        self.log_level = parsed_args.log_level

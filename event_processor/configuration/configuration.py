@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 
 
 class EventProcessorConfiguration:
@@ -77,6 +78,14 @@ class EventProcessorConfiguration:
             required=False,
         )
 
+        parser.add_argument(
+            "-log_level",
+            dest="log_level",
+            default=logging.INFO,
+            type=lambda x: getattr(logging, x),
+            help="Log Level: INFO, DEBUG, ERROR, CRITICAL"
+        )
+
         parsed_args = parser.parse_args(args_list)
         self.event_processor_id = parsed_args.processor_id
         self.kafka_bootstrap_server = parsed_args.kafka_bootstrap_server
@@ -85,6 +94,7 @@ class EventProcessorConfiguration:
         self.group_id = parsed_args.group_id
         self.batch_size_to_commit_offsets = parsed_args.batch_size_to_commit_offsets
         self.no_messages_to_poll = parsed_args.no_messages_to_poll
+        self.log_level = parsed_args.log_level
 
         self.service_destinations = json.loads(parsed_args.destination_configurations)
         for key, value in self.service_destinations.items():

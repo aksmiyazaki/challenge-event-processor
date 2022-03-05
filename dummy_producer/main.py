@@ -10,8 +10,8 @@ from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor im
 
 
 def main():
-    logger = get_logger()
     configuration = ProducerConfiguration(sys.argv[1:])
+    logger = get_logger(configuration.origin_service_id, configuration.log_level)
 
     logger.info("Building message producer")
     message_producer = KafkaProducer(
@@ -80,7 +80,7 @@ def build_produce_contextual_callback(logger):
         if err:
             logger.error(f"Error producing message! {err}")
         else:
-            logger.info(f"Message sent! Offset: {msg.offset()}, Key: {msg.key()}, Value: {msg.value()}")
+            logger.debug(f"Message sent! Offset: {msg.offset()}, Key: {msg.key()}, Value: {msg.value()}")
 
     return produce_callback
 
