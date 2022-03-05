@@ -80,7 +80,7 @@ def main_loop(configuration, message_consumer, output_producers, logger, is_runn
             try:
                 origin_key, origin_service_message = fetch_message_from_kafka(message_consumer)
 
-                (target_key, target_service_message,) = transform_message_to_target_consumer_service(
+                (target_key, target_service_message) = transform_message_to_target_consumer_service(
                     configuration.event_processor_id, origin_key, origin_service_message, logger,
                 )
 
@@ -115,7 +115,7 @@ def fetch_message_from_kafka(message_consumer):
 def transform_message_to_target_consumer_service(event_processor_id, origin_key, origin_message, logger):
     logger.debug(f"Transforming message: {origin_key}, {origin_message.dict()}")
 
-    return ProcessorToConsumer(
+    return origin_key, ProcessorToConsumer(
         {
             "producer_service_id": origin_message.get_origin_service_id(),
             "processor_service_id": event_processor_id,

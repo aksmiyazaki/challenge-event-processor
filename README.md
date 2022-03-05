@@ -4,6 +4,8 @@ An implementation of a challenge that requires a multi-tenant event processor.
 ## Considerations
 - At least once delivery.
 - Kafka will be the persistence layer.
+- All the code (except for the tests) is made to be read from top to bottom. Methods are ordered by its call order, 
+as any code should be done.
 
 ## Technology Choices
 

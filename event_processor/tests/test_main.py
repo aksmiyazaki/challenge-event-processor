@@ -1,7 +1,6 @@
 from unittest import mock
 from unittest.mock import Mock
 
-import pytest
 from confluent_kafka import KafkaError
 from confluent_kafka.avro import SerializerError
 
@@ -123,9 +122,10 @@ def test_transform_message():
     origin_message.get_event_timestamp.return_value = 123123
     origin_message.get_payload.return_value = "dummy_payload"
 
-    with mock.patch("event_processor.main.get_now_as_millisseconds_from_epoch") as get_now:
+    with mock.patch("event_processor.main.get_now_as_milliseconds_from_epoch") as get_now:
         get_now.return_value = 98765
-        res = transform_message_to_target_consumer_service(event_processor_id, origin_key, origin_message, Mock())
+        key_res, res = transform_message_to_target_consumer_service(event_processor_id, origin_key, origin_message, Mock())
+        assert key_res == origin_key
         assert res.producer_service_id == "dummy_service_id"
         assert res.processor_service_id == event_processor_id
         assert res.destination_type == "FINANCE"
