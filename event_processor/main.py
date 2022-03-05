@@ -76,21 +76,43 @@ def build_output_producers(configuration, logger):
     return output_producers
 
 
-def main_loop(configuration, message_consumer, output_producers, logger, is_running=True):
+def main_loop(
+    configuration, message_consumer, output_producers, logger, is_running=True
+):
     message_consumer.subscribe_topic(configuration.kafka_source_topic)
 
     try:
         while is_running:
             try:
-                process_message(
-                    configuration, message_consumer, output_producers, logger,
-                    build_contextual_callback(configuration, message_consumer, logger)
+                origin_key, origin_service_message = fetch_message_from_kafka(
+                    message_consumer
+                )
+
+                (
+                    target_key,
+                    target_service_message,
+                ) = transform_message_to_target_consumer_service(
+                    configuration.event_processor_id,
+                    origin_key,
+                    origin_service_message,
+                    logger,
+                )
+
+                send_message_to_downstream_service_topic(
+                    target_key,
+                    target_service_message,
+                    output_producers,
+                    configuration.service_destinations,
+                    logger,
+                    build_contextual_callback(configuration, message_consumer, logger),
                 )
             except KeyboardInterrupt:
                 logger.info("User asked for termination.")
                 is_running = False
             except SerializerError as e:
-                logger.error(f"Message Deserialization failed {e}. Ending this process.")
+                logger.error(
+                    f"Message Deserialization failed {e}. Ending this process."
+                )
                 is_running = False
     finally:
         for _, producer in output_producers.items():
@@ -98,37 +120,46 @@ def main_loop(configuration, message_consumer, output_producers, logger, is_runn
         message_consumer.terminate()
 
 
-def process_message(
-        configuration, message_consumer, output_producers, logger, callback
-):
+def fetch_message_from_kafka(message_consumer):
     msg = message_consumer.poll()
     key = msg.key()
-    parsed_message = ProducerToProcessor(msg.value())
+    parsed_value = ProducerToProcessor(msg.value())
 
-    logger.debug(f"Processing message: {key}, {parsed_message.dict()}")
-    target_service_type = parsed_message.get_destination_service_type()
+    return key, parsed_value
 
-    if target_service_type not in output_producers.keys():
-        raise Exception(f"No destination for {target_service_type}.")
 
-    processor_message = ProcessorToConsumer(
+def transform_message_to_target_consumer_service(
+    event_processor_id, origin_key, origin_message, logger
+):
+    logger.debug(f"Transforming message: {origin_key}, {origin_message.dict()}")
+
+    return ProcessorToConsumer(
         {
-            "producer_service_id": parsed_message.get_origin_service_id(),
-            "processor_service_id": configuration.event_processor_id,
-            "destination_type": parsed_message.get_destination_service_type(),
-            "producer_event_timestamp": parsed_message.get_event_timestamp(),
+            "producer_service_id": origin_message.get_origin_service_id(),
+            "processor_service_id": event_processor_id,
+            "destination_type": origin_message.get_destination_service_type(),
+            "producer_event_timestamp": origin_message.get_event_timestamp(),
             "processor_event_timestamp": get_now_as_millisseconds_from_epoch(),
-            "payload": parsed_message.get_payload(),
+            "payload": origin_message.get_payload(),
         }
     )
 
+
+def send_message_to_downstream_service_topic(
+    key, destination_message, output_producers, service_destinations, logger, callback
+):
+    target_service_type = destination_message.get_destination_type()
+    if target_service_type not in output_producers.keys():
+        raise ValueError(f"No destination for {target_service_type}.")
+
+    logger.info(f"Sending message: {key}, {destination_message.dict()}")
     output_producers[target_service_type].asynchronous_send(
-        topic=configuration.service_destinations[
-            parsed_message.get_destination_service_type()
-        ]["output_topic"],
+        topic=service_destinations[destination_message.get_destination_type()][
+            "output_topic"
+        ],
         key=key,
-        value=processor_message.dict(),
-        callback_after_delivery=callback
+        value=destination_message.dict(),
+        callback_after_delivery=callback,
     )
 
 

@@ -5,8 +5,14 @@ import pytest
 from confluent_kafka import KafkaError
 from confluent_kafka.avro import SerializerError
 
-from event_processor.main import build_contextual_commit_offsets_callback, build_output_producers, main_loop, \
-    process_message
+from event_processor.main import (
+    build_contextual_commit_offsets_callback,
+    build_output_producers,
+    main_loop,
+    fetch_message_from_kafka,
+    transform_message_to_target_consumer_service,
+    send_message_to_downstream_service_topic,
+)
 
 
 def test_error_on_contextual_commit_callback():
@@ -58,8 +64,8 @@ def test_successfully_build_output_producers():
 
 
 def test_main_loop_on_keyboard_interrupt():
-    with mock.patch("event_processor.main.process_message") as process_message_mock:
-        process_message_mock.side_effect = KeyboardInterrupt("interrupted")
+    with mock.patch("event_processor.main.fetch_message_from_kafka") as fetch_message_mock:
+        fetch_message_mock.side_effect = KeyboardInterrupt("interrupted")
         configuration = Mock()
         message_consumer = Mock()
         output_producers = {"m1": Mock(), "m2": Mock()}
@@ -74,8 +80,8 @@ def test_main_loop_on_keyboard_interrupt():
 
 
 def test_main_loop_on_serialization_error():
-    with mock.patch("event_processor.main.process_message") as process_message_mock:
-        process_message_mock.side_effect = SerializerError("interrupted")
+    with mock.patch("event_processor.main.fetch_message_from_kafka") as fetch_message_mock:
+        fetch_message_mock.side_effect = SerializerError("interrupted")
         configuration = Mock()
         message_consumer = Mock()
         output_producers = {"m1": Mock(), "m2": Mock()}
@@ -89,55 +95,93 @@ def test_main_loop_on_serialization_error():
         message_consumer.terminate.assert_called_once()
 
 
-def test_process_message():
-    configuration = Mock()
-    configuration.service_destinations = {"FINANCE": {}}
-    configuration.service_destinations["FINANCE"]["output_topic"] = "dummy.topic"
+def test_fetch_message_from_kafka():
     message_consumer = Mock()
     message = Mock()
-    message.key.return_value = "dummy_key"
-    message.value.return_value = "dummy_value"
+    message.key.return_value = "potato"
+    message.value.return_value = "carrot"
+
     message_consumer.poll.return_value = message
-    output_producers = {"FINANCE": Mock()}
-    logger = Mock()
 
-    with mock.patch("event_processor.main.ProducerToProcessor", autospec=True) as mocked_python_msg_object, \
-            mock.patch("event_processor.main.ProcessorToConsumer", autospec=True) as mocked_python_consumer_msg_object, \
-            mock.patch("event_processor.main.get_now_as_millisseconds_from_epoch") as get_now:
-        expected_service_type = "FINANCE"
-        expected_origin_service_id = "123"
-        expected_event_timestamp = 123123
-        expected_now = 123123
-        expected_payload = "9876"
-
-        producer_to_processor_message = Mock()
-        producer_to_processor_message.get_destination_service_type.return_value = expected_service_type
-        producer_to_processor_message.get_origin_service_id.return_value = expected_origin_service_id
-        producer_to_processor_message.get_event_timestamp.return_value = expected_event_timestamp
-        producer_to_processor_message.get_payload.return_value = expected_payload
-        mocked_python_msg_object.return_value = producer_to_processor_message
-        get_now.return_value = expected_now
-        processor_to_consumer_message = Mock()
-        processor_to_consumer_message.dict.return_value = "dummy_msg"
-        mocked_python_consumer_msg_object.return_value = processor_to_consumer_message
-        cb = Mock()
-
-        process_message(configuration, message_consumer, output_producers, logger, cb)
+    with mock.patch(
+        "event_processor.main.ProducerToProcessor", autospec=True
+    ) as mocked_parsed_message:
+        mocked_parsed_message.return_value = "tomato"
+        key, value = fetch_message_from_kafka(message_consumer)
 
         message_consumer.poll.assert_called_once()
-        mocked_python_msg_object.assert_called_once_with("dummy_value")
-        mocked_python_consumer_msg_object.assert_called_once_with({
-            "producer_service_id": expected_origin_service_id,
-            "processor_service_id": configuration.event_processor_id,
-            "destination_type": expected_service_type,
-            "producer_event_timestamp": expected_event_timestamp,
-            "processor_event_timestamp": expected_now,
-            "payload": expected_payload,
-        })
+        mocked_parsed_message.assert_called_once_with("carrot")
+        assert key == "potato"
+        assert value == "tomato"
 
-        output_producers["FINANCE"].asynchronous_send.assert_called_once_with(
-            topic="dummy.topic",
-            key="dummy_key",
-            value="dummy_msg",
-            callback_after_delivery=cb
+
+def test_transform_message():
+    event_processor_id = "12341234"
+    origin_key = "potato"
+    origin_message = Mock()
+    origin_message.dict.return_vaue = "dummy_dict"
+    origin_message.get_origin_service_id.return_value = "dummy_service_id"
+    origin_message.get_destination_service_type.return_value = "FINANCE"
+    origin_message.get_event_timestamp.return_value = 123123
+    origin_message.get_payload.return_value = "dummy_payload"
+
+    with mock.patch(
+        "event_processor.main.get_now_as_millisseconds_from_epoch"
+    ) as get_now:
+        get_now.return_value = 98765
+        res = transform_message_to_target_consumer_service(
+            event_processor_id, origin_key, origin_message, Mock()
         )
+        assert res.producer_service_id == "dummy_service_id"
+        assert res.processor_service_id == event_processor_id
+        assert res.destination_type == "FINANCE"
+        assert res.producer_event_timestamp == 123123
+        assert res.payload == "dummy_payload"
+        assert res.processor_event_timestamp == 98765
+
+
+def test_send_message_to_downstream_service():
+    dummy_key = "dummy_key"
+    destination_message = Mock()
+    destination_message.dict.return_value = "dummy_dict"
+    destination_message.get_destination_type.return_value = "FINANCE"
+    output_producers = {"FINANCE": Mock()}
+    service_destinations = {"FINANCE": {"output_topic": "dummy.topic"}}
+    callback = Mock()
+
+    send_message_to_downstream_service_topic(
+        dummy_key,
+        destination_message,
+        output_producers,
+        service_destinations,
+        Mock(),
+        callback,
+    )
+
+    output_producers["FINANCE"].asynchronous_send.assert_called_once_with(
+        topic="dummy.topic",
+        key="dummy_key",
+        value="dummy_dict",
+        callback_after_delivery=callback,
+    )
+
+
+def test_failure_send_message_to_downstream_non_existent_service():
+    dummy_key = "dummy_key"
+    destination_message = Mock()
+    destination_message.dict.return_value = "dummy_dict"
+    destination_message.get_destination_type.return_value = "MARKETING"
+    output_producers = {"FINANCE": Mock()}
+    service_destinations = {"FINANCE": {"output_topic": "dummy.topic"}}
+    callback = Mock()
+    try:
+        send_message_to_downstream_service_topic(
+            dummy_key,
+            destination_message,
+            output_producers,
+            service_destinations,
+            Mock(),
+            callback,
+        )
+    except ValueError as ex:
+        assert "No destination for" in str(ex)
