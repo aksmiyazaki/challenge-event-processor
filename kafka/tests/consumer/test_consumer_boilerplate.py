@@ -24,6 +24,7 @@ def built_object():
         "dummy-subject-value",
         DUMMY_GROUP_ID,
         DUMMY_BOOTSTRAP_SERVERS,
+        10,
         DUMMY_CALLBACK,
         Mock(),
         False,

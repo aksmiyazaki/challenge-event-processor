@@ -45,7 +45,7 @@ services:
       command: >
         sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
                sleep 45 && 
-               python ./event_processor/main.py -processor_id event-processor-1 -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -source_topic producer.to.processor -batch_size_to_commit_offsets 20 -destination_configurations '{\"FINANCE\": {\"output_topic\": \"processor.to.finance\", \"output_subject\": \"processor.to.consumer-value\"}, \"MARKETING\": {\"output_topic\": \"processor.to.marketing\", \"output_subject\": \"processor.to.consumer-value\"}, \"LOGISTICS\": {\"output_topic\": \"processor.to.logistics\", \"output_subject\": \"processor.to.consumer-value\"}}' -group_id event_processor"
+               python ./event_processor/main.py -log_level DEBUG -processor_id event-processor-1 -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -source_topic producer.to.processor -batch_size_to_commit_offsets 20 -destination_configurations '{\"FINANCE\": {\"output_topic\": \"processor.to.finance\", \"output_subject\": \"processor.to.consumer-value\"}, \"MARKETING\": {\"output_topic\": \"processor.to.marketing\", \"output_subject\": \"processor.to.consumer-value\"}, \"LOGISTICS\": {\"output_topic\": \"processor.to.logistics\", \"output_subject\": \"processor.to.consumer-value\"}}' -group_id event_processor"
 
   producer-1:
     depends_on:
@@ -55,7 +55,7 @@ services:
     command: >
       sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
              sleep 60 && 
-             python ./dummy_producer/main.py -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type FINANCE -origin_service_id producer-1 -list_of_destinations MARKETING LOGISTICS -amount_of_messages 200 -sleep_between_messages_in_seconds 1"
+             python ./dummy_producer/main.py -log_level DEBUG -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type FINANCE -origin_service_id producer-1 -list_of_destinations MARKETING LOGISTICS -amount_of_messages 2002 -sleep_between_messages_in_seconds 1"
 
   producer-2:
     depends_on:
@@ -65,5 +65,5 @@ services:
     command: >
       sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
              sleep 60 && 
-             python ./dummy_producer/main.py -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type AUDITING -origin_service_id producer-2 -list_of_destinations FINANCE LOGISTICS -amount_of_messages 200 -sleep_between_messages_in_seconds 1"
+             python ./dummy_producer/main.py -log_level DEBUG -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type AUDITING -origin_service_id producer-2 -list_of_destinations FINANCE LOGISTICS -amount_of_messages 2002 -sleep_between_messages_in_seconds 1"
 

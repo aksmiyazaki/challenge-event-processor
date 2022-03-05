@@ -168,3 +168,9 @@ def test_failure_send_message_to_downstream_non_existent_service():
         )
     except ValueError as ex:
         assert "No destination for" in str(ex)
+
+
+def test_contextual_commit_callback():
+    logger = Mock()
+
+    callback = build_contextual_commit_offsets_callback(logger)

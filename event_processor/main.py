@@ -14,9 +14,6 @@ from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor im
 
 from datetime import datetime, timezone
 
-# Global counter to know when commit offsets
-message_counter = 0
-
 
 def main():
     configuration = EventProcessorConfiguration(sys.argv[1:])
@@ -33,6 +30,7 @@ def main():
         f"{configuration.kafka_source_topic}-value",
         configuration.group_id,
         configuration.kafka_bootstrap_server,
+        configuration.batch_size_to_commit_offsets,
         build_contextual_commit_offsets_callback(logger),
         logger,
     )
@@ -91,7 +89,7 @@ def main_loop(configuration, message_consumer, output_producers, logger, is_runn
                     output_producers,
                     configuration.service_destinations,
                     logger,
-                    build_contextual_callback(configuration, message_consumer, logger),
+                    build_contextual_delivered_message_callback(message_consumer, logger),
                 )
             except KeyboardInterrupt:
                 logger.info("User asked for termination.")
@@ -136,7 +134,7 @@ def get_now_as_milliseconds_from_epoch():
 
 
 def send_message_to_downstream_service_topic(
-    key, destination_message, output_producers, service_destinations, logger, callback
+        key, destination_message, output_producers, service_destinations, logger, callback
 ):
     target_service_type = destination_message.get_destination_type()
     if target_service_type not in output_producers.keys():
@@ -151,19 +149,15 @@ def send_message_to_downstream_service_topic(
     )
 
 
-def build_contextual_callback(configuration, consumer, logger):
-    def check_and_commit_offsets(err, msg):
-        global message_counter
+def build_contextual_delivered_message_callback(consumer, logger):
+    def control_messages_processed(err, msg):
         if err:
             logger.error(f"Couldn't deliver message: {msg.key()} {msg.value()}")
         else:
-            message_counter += 1
-            logger.debug(f"Send Message Successful, {message_counter}")
-            if (message_counter % configuration.batch_size_to_commit_offsets) == 0:
-                logger.info(f"Committing offsets on {message_counter} msgs")
-                consumer.commit_offsets()
+            consumer.signalize_message_processed()
+            logger.debug(f"Send Message Successful, {consumer.messages_processed}")
 
-    return check_and_commit_offsets
+    return control_messages_processed
 
 
 if __name__ == "__main__":

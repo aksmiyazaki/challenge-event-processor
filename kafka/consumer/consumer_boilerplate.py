@@ -1,6 +1,7 @@
 from enum import Enum
+from queue import Queue
 
-from confluent_kafka import DeserializingConsumer, KafkaError, KafkaException
+from confluent_kafka import DeserializingConsumer, KafkaError, KafkaException, TopicPartition
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.serialization import StringDeserializer
@@ -13,21 +14,22 @@ class SupportedDeserializers(Enum):
 
 class KafkaConsumer:
     def __init__(
-        self,
-        schema_registry_url,
-        key_deserializer_type,
-        key_deserializer_subject,
-        value_deserializer_type,
-        value_deserializer_subject,
-        group_id,
-        bootstrap_servers,
-        callback_commit_offsets,
-        logger,
-        must_initialize=True,
+            self,
+            schema_registry_url,
+            key_deserializer_type,
+            key_deserializer_subject,
+            value_deserializer_type,
+            value_deserializer_subject,
+            kafka_consumer_group_id,
+            kafka_bootstrap_servers,
+            messages_processed_before_commit_offsets,
+            callback_after_committing_offsets,
+            logger,
+            must_initialize=True,
     ):
-        self.__commit_offsets_callback = callback_commit_offsets
-        self.__group_id = group_id
-        self.__bootstrap_servers = bootstrap_servers
+        self.__commit_offsets_callback = callback_after_committing_offsets
+        self.__group_id = kafka_consumer_group_id
+        self.__bootstrap_servers = kafka_bootstrap_servers
         self.__schema_registry_url = schema_registry_url
         self.schema_registry_conf = {"url": self.__schema_registry_url}
         self.__schema_registry_client = None
@@ -40,6 +42,11 @@ class KafkaConsumer:
         self.__consumer_config = {}
         self.__consumer = None
         self.__logger = logger
+        self.__messages_processed_before_commit_offsets = messages_processed_before_commit_offsets
+        self.__messages_being_processed = Queue()
+        self.__current_offsets = {}
+        self.messages_processed = 0
+        self.__polls_without_commiting_offsets = 0
 
         if must_initialize:
             logger.info("Initializing consumer...")
@@ -84,9 +91,6 @@ class KafkaConsumer:
                 raise ValueError(f"Cannot encode {SupportedDeserializers.AVRO_DESERIALIZER} without a Schema")
             return AvroDeserializer(self.__schema_registry_client, schema.schema.schema_str)
 
-    def subscribe_topic(self, topic):
-        self.__consumer.subscribe([topic])
-
     def poll(self):
         msg = None
         while msg is None:
@@ -97,15 +101,38 @@ class KafkaConsumer:
         if msg.error():
             raise KafkaException(msg.error())
         else:
+            self.__messages_being_processed.put(msg)
             return msg
 
-    def commit_offsets(self):
-        self.__consumer.commit(asynchronous=True)
-
     def terminate(self):
-        try:
-            self.__consumer.commit(asynchronous=False)
-        except KafkaException as e:
-            if e.args[0].code() == KafkaError._NO_OFFSET:
-                self.__logger.info("No offsets to commit, moving on.")
         self.__consumer.close()
+
+    def signalize_message_processed(self):
+        msg = self.__messages_being_processed.get()
+        self.messages_processed += 1
+
+        if msg.topic() not in self.__current_offsets:
+            self.__current_offsets[msg.topic()] = {}
+
+        self.__current_offsets[msg.topic()][msg.partition()] = TopicPartition(msg.topic(), msg.partition(),
+                                                                              msg.offset())
+        if (self.messages_processed % self.__messages_processed_before_commit_offsets) == 0:
+            self.__logger.info(f"Committing offsets after {self.messages_processed} messages")
+            list_to_commit = self.convert_control_offset_dictionary_to_list(self.__current_offsets)
+            self.__logger.info(f"This is the list of offsets being commited: {list_to_commit}")
+            self.__consumer.commit(offsets=list_to_commit, asynchronous=True)
+
+    def convert_control_offset_dictionary_to_list(self, current_offsets):
+        list_of_partitions = []
+        for _, partitions in current_offsets.items():
+            for _, partition_object in partitions.items():
+                partition_object.offset += 1
+                list_of_partitions.append(partition_object)
+        return list_of_partitions
+
+    def handle_offsets(self):
+        if (self.messages_processed % self.__messages_processed_before_commit_offsets) == 0:
+            self.__consumer.commit(asynchronous=True)
+
+    def subscribe_topic(self, topic):
+        self.__consumer.subscribe([topic])
