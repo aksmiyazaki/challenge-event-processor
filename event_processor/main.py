@@ -9,12 +9,8 @@ from confluent_kafka.avro import SerializerError
 from event_processor.configuration.configuration import EventProcessorConfiguration
 from kafka.consumer.consumer_boilerplate import KafkaConsumer, SupportedDeserializers
 from kafka.producer.producer_boilerplate import KafkaProducer, SupportedSerializers
-from schemas.avro_auto_generated_classes.service_messages.ProcessorToConsumer import (
-    ProcessorToConsumer,
-)
-from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import (
-    ProducerToProcessor,
-)
+from schemas.avro_auto_generated_classes.service_messages.ProcessorToConsumer import ProcessorToConsumer
+from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import ProducerToProcessor
 
 from datetime import datetime, timezone
 
@@ -76,26 +72,16 @@ def build_output_producers(configuration, logger):
     return output_producers
 
 
-def main_loop(
-    configuration, message_consumer, output_producers, logger, is_running=True
-):
+def main_loop(configuration, message_consumer, output_producers, logger, is_running=True):
     message_consumer.subscribe_topic(configuration.kafka_source_topic)
 
     try:
         while is_running:
             try:
-                origin_key, origin_service_message = fetch_message_from_kafka(
-                    message_consumer
-                )
+                origin_key, origin_service_message = fetch_message_from_kafka(message_consumer)
 
-                (
-                    target_key,
-                    target_service_message,
-                ) = transform_message_to_target_consumer_service(
-                    configuration.event_processor_id,
-                    origin_key,
-                    origin_service_message,
-                    logger,
+                (target_key, target_service_message,) = transform_message_to_target_consumer_service(
+                    configuration.event_processor_id, origin_key, origin_service_message, logger,
                 )
 
                 send_message_to_downstream_service_topic(
@@ -110,9 +96,7 @@ def main_loop(
                 logger.info("User asked for termination.")
                 is_running = False
             except SerializerError as e:
-                logger.error(
-                    f"Message Deserialization failed {e}. Ending this process."
-                )
+                logger.error(f"Message Deserialization failed {e}. Ending this process.")
                 is_running = False
     finally:
         for _, producer in output_producers.items():
@@ -128,9 +112,7 @@ def fetch_message_from_kafka(message_consumer):
     return key, parsed_value
 
 
-def transform_message_to_target_consumer_service(
-    event_processor_id, origin_key, origin_message, logger
-):
+def transform_message_to_target_consumer_service(event_processor_id, origin_key, origin_message, logger):
     logger.debug(f"Transforming message: {origin_key}, {origin_message.dict()}")
 
     return ProcessorToConsumer(
@@ -139,10 +121,14 @@ def transform_message_to_target_consumer_service(
             "processor_service_id": event_processor_id,
             "destination_type": origin_message.get_destination_service_type(),
             "producer_event_timestamp": origin_message.get_event_timestamp(),
-            "processor_event_timestamp": get_now_as_millisseconds_from_epoch(),
+            "processor_event_timestamp": get_now_as_milliseconds_from_epoch(),
             "payload": origin_message.get_payload(),
         }
     )
+
+
+def get_now_as_milliseconds_from_epoch():
+    return int(datetime.timestamp(datetime.now(tz=timezone.utc)) * 1000)
 
 
 def send_message_to_downstream_service_topic(
@@ -154,17 +140,11 @@ def send_message_to_downstream_service_topic(
 
     logger.info(f"Sending message: {key}, {destination_message.dict()}")
     output_producers[target_service_type].asynchronous_send(
-        topic=service_destinations[destination_message.get_destination_type()][
-            "output_topic"
-        ],
+        topic=service_destinations[destination_message.get_destination_type()]["output_topic"],
         key=key,
         value=destination_message.dict(),
         callback_after_delivery=callback,
     )
-
-
-def get_now_as_millisseconds_from_epoch():
-    return int(datetime.timestamp(datetime.now(tz=timezone.utc)) * 1000)
 
 
 def build_contextual_callback(configuration, consumer, logger):

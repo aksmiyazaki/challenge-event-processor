@@ -6,9 +6,7 @@ from time import sleep
 
 from kafka.producer.producer_boilerplate import KafkaProducer, SupportedSerializers
 from logger.boilerplate import get_logger
-from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import (
-    ProducerToProcessor,
-)
+from schemas.avro_auto_generated_classes.service_messages.ProducerToProcessor import ProducerToProcessor
 
 
 def main():
@@ -40,9 +38,7 @@ def main():
                         iterator % len(cli_args.list_of_destinations)
                     ],
                     "payload": f"dummy-payload {uuid.uuid4()}",
-                    "event_timestamp": int(
-                        datetime.timestamp(datetime.now(tz=timezone.utc)) * 1000
-                    ),
+                    "event_timestamp": int(datetime.timestamp(datetime.now(tz=timezone.utc)) * 1000),
                 }
             )
 
@@ -50,9 +46,7 @@ def main():
                 if err:
                     logger.error(f"Error producing message! {err}")
                 else:
-                    logger.info(
-                        f"Message sent! Offset: {msg.offset()}, Key: {msg.key()}, Value: {msg.value()}"
-                    )
+                    logger.info(f"Message sent! Offset: {msg.offset()}, Key: {msg.key()}, Value: {msg.value()}")
 
             message_producer.asynchronous_send(
                 topic=cli_args.target_topic,
@@ -118,11 +112,7 @@ def parse_cli_arguments(args_list):
     )
 
     parser.add_argument(
-        "-amount_of_messages",
-        dest="amount_of_messages",
-        type=int,
-        help="Amount of messages to send.",
-        required=True,
+        "-amount_of_messages", dest="amount_of_messages", type=int, help="Amount of messages to send.", required=True,
     )
 
     parser.add_argument(

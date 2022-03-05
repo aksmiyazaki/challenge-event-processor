@@ -56,9 +56,7 @@ class KafkaConsumer:
             self.__value_deserializer_type, self.__value_deserializer_subject
         )
 
-        key_deserializer = self.build_deserializer(
-            self.__key_deserializer_type, self.__key_deserialization_schema
-        )
+        key_deserializer = self.build_deserializer(self.__key_deserializer_type, self.__key_deserialization_schema)
         value_deserializer = self.build_deserializer(
             self.__value_deserializer_type, self.__value_deserialization_schema
         )
@@ -82,17 +80,9 @@ class KafkaConsumer:
         if serializer_type == SupportedDeserializers.STRING_DESERIALIZER:
             return StringDeserializer()
         elif serializer_type == SupportedDeserializers.AVRO_DESERIALIZER:
-            if (
-                schema is None
-                or schema.schema.schema_str is None
-                or schema.schema.schema_str == ""
-            ):
-                raise ValueError(
-                    f"Cannot encode {SupportedDeserializers.AVRO_DESERIALIZER} without a Schema"
-                )
-            return AvroDeserializer(
-                self.__schema_registry_client, schema.schema.schema_str
-            )
+            if schema is None or schema.schema.schema_str is None or schema.schema.schema_str == "":
+                raise ValueError(f"Cannot encode {SupportedDeserializers.AVRO_DESERIALIZER} without a Schema")
+            return AvroDeserializer(self.__schema_registry_client, schema.schema.schema_str)
 
     def subscribe_topic(self, topic):
         self.__consumer.subscribe([topic])

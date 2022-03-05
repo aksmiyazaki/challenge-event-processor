@@ -64,4 +64,4 @@ test:
 
 .PHONY: lint
 lint:
-	black .
+	black --line-length 120 .

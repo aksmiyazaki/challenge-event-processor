@@ -65,23 +65,15 @@ def test_fetch_avro_deserialization_schema(built_object):
     expected_subject_name = "dummy-value"
     expected_return_value = "dummy-schema"
 
-    with mock.patch.object(
-        built_object, "_KafkaConsumer__schema_registry_client"
-    ) as mocked_schema_registry:
+    with mock.patch.object(built_object, "_KafkaConsumer__schema_registry_client") as mocked_schema_registry:
         mocked_schema_registry.get_latest_version.return_value = expected_return_value
-        res = built_object.fetch_deserialization_schema(
-            SupportedDeserializers.AVRO_DESERIALIZER, expected_subject_name
-        )
-        mocked_schema_registry.get_latest_version.assert_called_once_with(
-            expected_subject_name
-        )
+        res = built_object.fetch_deserialization_schema(SupportedDeserializers.AVRO_DESERIALIZER, expected_subject_name)
+        mocked_schema_registry.get_latest_version.assert_called_once_with(expected_subject_name)
         assert res == expected_return_value
 
 
 def test_fetch_string_deserialization_schema(built_object):
-    res = built_object.fetch_deserialization_schema(
-        SupportedDeserializers.STRING_DESERIALIZER, None
-    )
+    res = built_object.fetch_deserialization_schema(SupportedDeserializers.STRING_DESERIALIZER, None)
     assert res is None
 
 
@@ -89,9 +81,7 @@ def test_build_string_deserializer(built_object):
     with mock.patch(
         "kafka.consumer.consumer_boilerplate.StringDeserializer", autospec=True
     ) as mock_string_deserializer:
-        built_object.build_deserializer(
-            SupportedDeserializers.STRING_DESERIALIZER, None
-        )
+        built_object.build_deserializer(SupportedDeserializers.STRING_DESERIALIZER, None)
         mock_string_deserializer.assert_called_once()
 
 
@@ -107,20 +97,14 @@ def test_build_avro_serializer(built_object):
         schema.schema = Mock()
         schema.schema.schema_str = expected_schema
 
-        built_object.build_deserializer(
-            SupportedDeserializers.AVRO_DESERIALIZER, schema
-        )
-        mock_avro_deserializer.assert_called_once_with(
-            mocked_schema_registry, expected_schema
-        )
+        built_object.build_deserializer(SupportedDeserializers.AVRO_DESERIALIZER, schema)
+        mock_avro_deserializer.assert_called_once_with(mocked_schema_registry, expected_schema)
 
 
 def test_fails_building_avro_serializer_with_none_schema(built_object):
     schema = None
     with pytest.raises(ValueError):
-        built_object.build_deserializer(
-            SupportedDeserializers.AVRO_DESERIALIZER, schema
-        )
+        built_object.build_deserializer(SupportedDeserializers.AVRO_DESERIALIZER, schema)
 
 
 def test_fails_building_avro_serializer_with_none_schema_str(built_object):
@@ -128,9 +112,7 @@ def test_fails_building_avro_serializer_with_none_schema_str(built_object):
     schema.schema = Mock()
     schema.schema.schema_str = None
     with pytest.raises(ValueError):
-        built_object.build_deserializer(
-            SupportedDeserializers.AVRO_DESERIALIZER, schema
-        )
+        built_object.build_deserializer(SupportedDeserializers.AVRO_DESERIALIZER, schema)
 
 
 def test_fails_building_avro_serializer_with_empty_schema_str(built_object):
@@ -138,6 +120,4 @@ def test_fails_building_avro_serializer_with_empty_schema_str(built_object):
     schema.schema = Mock()
     schema.schema.schema_str = ""
     with pytest.raises(ValueError):
-        built_object.build_deserializer(
-            SupportedDeserializers.AVRO_DESERIALIZER, schema
-        )
+        built_object.build_deserializer(SupportedDeserializers.AVRO_DESERIALIZER, schema)

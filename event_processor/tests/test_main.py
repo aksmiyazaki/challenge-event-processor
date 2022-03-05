@@ -103,9 +103,7 @@ def test_fetch_message_from_kafka():
 
     message_consumer.poll.return_value = message
 
-    with mock.patch(
-        "event_processor.main.ProducerToProcessor", autospec=True
-    ) as mocked_parsed_message:
+    with mock.patch("event_processor.main.ProducerToProcessor", autospec=True) as mocked_parsed_message:
         mocked_parsed_message.return_value = "tomato"
         key, value = fetch_message_from_kafka(message_consumer)
 
@@ -125,13 +123,9 @@ def test_transform_message():
     origin_message.get_event_timestamp.return_value = 123123
     origin_message.get_payload.return_value = "dummy_payload"
 
-    with mock.patch(
-        "event_processor.main.get_now_as_millisseconds_from_epoch"
-    ) as get_now:
+    with mock.patch("event_processor.main.get_now_as_millisseconds_from_epoch") as get_now:
         get_now.return_value = 98765
-        res = transform_message_to_target_consumer_service(
-            event_processor_id, origin_key, origin_message, Mock()
-        )
+        res = transform_message_to_target_consumer_service(event_processor_id, origin_key, origin_message, Mock())
         assert res.producer_service_id == "dummy_service_id"
         assert res.processor_service_id == event_processor_id
         assert res.destination_type == "FINANCE"
@@ -150,19 +144,11 @@ def test_send_message_to_downstream_service():
     callback = Mock()
 
     send_message_to_downstream_service_topic(
-        dummy_key,
-        destination_message,
-        output_producers,
-        service_destinations,
-        Mock(),
-        callback,
+        dummy_key, destination_message, output_producers, service_destinations, Mock(), callback,
     )
 
     output_producers["FINANCE"].asynchronous_send.assert_called_once_with(
-        topic="dummy.topic",
-        key="dummy_key",
-        value="dummy_dict",
-        callback_after_delivery=callback,
+        topic="dummy.topic", key="dummy_key", value="dummy_dict", callback_after_delivery=callback,
     )
 
 
@@ -176,12 +162,7 @@ def test_failure_send_message_to_downstream_non_existent_service():
     callback = Mock()
     try:
         send_message_to_downstream_service_topic(
-            dummy_key,
-            destination_message,
-            output_producers,
-            service_destinations,
-            Mock(),
-            callback,
+            dummy_key, destination_message, output_producers, service_destinations, Mock(), callback,
         )
     except ValueError as ex:
         assert "No destination for" in str(ex)

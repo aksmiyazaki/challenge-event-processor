@@ -93,15 +93,10 @@ def test_successfully_parse_args(application_args):
     assert config.kafka_bootstrap_server == DUMMY_BOOTSTRAP_SERVER
     assert config.schema_registry_url == DUMMY_SCHEMA_REGISTRY_URL
     assert config.group_id == DUMMY_GROUP_ID
-    assert config.batch_size_to_commit_offsets == int(
-        DUMMY_BATCH_SIZE_TO_COMMIT_OFFSETS
-    )
+    assert config.batch_size_to_commit_offsets == int(DUMMY_BATCH_SIZE_TO_COMMIT_OFFSETS)
     assert len(config.service_destinations) == 2
     assert config.service_destinations["finance"]["output_topic"] == "finance.topic"
-    assert (
-        config.service_destinations["finance"]["output_subject"]
-        == "finance.topic-value"
-    )
+    assert config.service_destinations["finance"]["output_subject"] == "finance.topic-value"
     assert config.event_processor_id == DUMMY_PROCESSOR_ID
 
 
