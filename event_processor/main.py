@@ -115,15 +115,18 @@ def fetch_message_from_kafka(message_consumer):
 def transform_message_to_target_consumer_service(event_processor_id, origin_key, origin_message, logger):
     logger.debug(f"Transforming message: {origin_key}, {origin_message.dict()}")
 
-    return origin_key, ProcessorToConsumer(
-        {
-            "producer_service_id": origin_message.get_origin_service_id(),
-            "processor_service_id": event_processor_id,
-            "destination_type": origin_message.get_destination_service_type(),
-            "producer_event_timestamp": origin_message.get_event_timestamp(),
-            "processor_event_timestamp": get_now_as_milliseconds_from_epoch(),
-            "payload": origin_message.get_payload(),
-        }
+    return (
+        origin_key,
+        ProcessorToConsumer(
+            {
+                "producer_service_id": origin_message.get_origin_service_id(),
+                "processor_service_id": event_processor_id,
+                "destination_type": origin_message.get_destination_service_type(),
+                "producer_event_timestamp": origin_message.get_event_timestamp(),
+                "processor_event_timestamp": get_now_as_milliseconds_from_epoch(),
+                "payload": origin_message.get_payload(),
+            }
+        ),
     )
 
 

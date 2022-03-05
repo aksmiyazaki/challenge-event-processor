@@ -124,7 +124,9 @@ def test_transform_message():
 
     with mock.patch("event_processor.main.get_now_as_milliseconds_from_epoch") as get_now:
         get_now.return_value = 98765
-        key_res, res = transform_message_to_target_consumer_service(event_processor_id, origin_key, origin_message, Mock())
+        key_res, res = transform_message_to_target_consumer_service(
+            event_processor_id, origin_key, origin_message, Mock()
+        )
         assert key_res == origin_key
         assert res.producer_service_id == "dummy_service_id"
         assert res.processor_service_id == event_processor_id
