@@ -68,8 +68,8 @@ All the topics in the solution have just 3 partitions, because I guess that eval
 here. But if we were building a production app, there should be an evaluation on how many partitions each topic should
 have since partitions define the throughput that the platform can reach.
 
-The `event_processor` is quite simple, it gets messages from the topic, resolving its schema and sends to the
-appropriate output topic. Schema Registry was used with AVRO since this combination is widely used in the industry and
+The `event_processor` gets messages from the topic, resolving its schema and sends to the appropriate output topic. 
+Schema Registry was used with AVRO since this combination is widely used in the industry and
 have nice features such as Schema Evolution and low overhead on the payload, because it holds just the schema id. Also,
 for the persistence layer, we've used Kafka itself. It is easy to add a long retention persistence component in this
 architecture, it could be used a Sink Kafka Connect connector from Kafka to a blob storage (s3, Azure Blob Storage, GCS)
