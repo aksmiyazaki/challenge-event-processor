@@ -19,6 +19,11 @@ Producer:
 -bootstrap_server localhost:9092 -schema_registry_url http://localhost:8081 -target_topic producer.to.processor -origin_service_type financial -origin_service_id 123456 -list_of_destinations FINANCE marketing -amount_of_messages 8 -sleep_between_messages_in_seconds 1 -log_level INFO
 ```
 
+Consumer:
+```
+-log_level DEBUG -processor_id event-processor-1 -bootstrap_server localhost:9092 -schema_registry_url http://localhost:8081 -source_topic producer.to.processor -batch_size_to_commit_offsets 5 -destination_configurations "{\"FINANCE\": {\"output_topic\": \"processor.to.finance\", \"output_subject\": \"processor.to.consumer-value\"}, \"MARKETING\": {\"output_topic\": \"processor.to.marketing\", \"output_subject\": \"processor.to.consumer-value\"}, \"LOGISTICS\": {\"output_topic\": \"processor.to.logistics\", \"output_subject\": \"processor.to.consumer-value\"}}" -group_id event_processor
+```
+
 ## Requirements
 Unix environment (make), Docker (mine is 20.10.12) and docker-compose (mine is 1.28.5).
 
@@ -29,7 +34,9 @@ Unix environment (make), Docker (mine is 20.10.12) and docker-compose (mine is 1
 - All the code (except for the tests) is made to be read from top to bottom. Methods are ordered by its call order, as
   any code should be done, according to Robert C. Martin's
   [Clean Code](https://www.amazon.com.br/Clean-Code-Handbook-Software-Craftsmanship/dp/0132350882/ref=asc_df_0132350882/?tag=googleshopp00-20&linkCode=df0&hvadid=379787788238&hvpos=&hvnetw=g&hvrand=11862824861617951348&hvpone=&hvptwo=&hvqmt=&hvdev=c&hvdvcmdl=&hvlocint=&hvlocphy=9102225&hvtargid=pla-435472505264&psc=1).
-- 
+- There's no code comments. If the code is not self explanatory, it should be refactored, with exception of APIs and 
+libraries that are widely used. I made some explanation below about the offset commit logic because to make sure that
+is clear, because it is a little bit complex because we are dealing with asynchronous processing.
 
 ## Technology Choices
 

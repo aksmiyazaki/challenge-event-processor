@@ -135,7 +135,7 @@ def get_now_as_milliseconds_from_epoch():
 
 
 def send_message_to_downstream_service_topic(
-        key, destination_message, output_producers, service_destinations, logger, callback
+    key, destination_message, output_producers, service_destinations, logger, callback
 ):
     target_service_type = destination_message.get_destination_type()
     if target_service_type not in output_producers.keys():

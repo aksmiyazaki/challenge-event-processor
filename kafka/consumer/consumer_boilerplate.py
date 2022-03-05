@@ -14,18 +14,18 @@ class SupportedDeserializers(Enum):
 
 class KafkaConsumer:
     def __init__(
-            self,
-            schema_registry_url,
-            key_deserializer_type,
-            key_deserializer_subject,
-            value_deserializer_type,
-            value_deserializer_subject,
-            kafka_consumer_group_id,
-            kafka_bootstrap_servers,
-            amount_of_messages_processes_to_commit_offsets,
-            callback_after_committing_offsets,
-            logger,
-            must_initialize=True,
+        self,
+        schema_registry_url,
+        key_deserializer_type,
+        key_deserializer_subject,
+        value_deserializer_type,
+        value_deserializer_subject,
+        kafka_consumer_group_id,
+        kafka_bootstrap_servers,
+        amount_of_messages_processes_to_commit_offsets,
+        callback_after_committing_offsets,
+        logger,
+        must_initialize=True,
     ):
         self.__commit_offsets_callback = callback_after_committing_offsets
         self.__kafka_consumer_group_id = kafka_consumer_group_id
@@ -66,10 +66,15 @@ class KafkaConsumer:
             self.__value_deserializer_type, self.__value_deserialization_schema
         )
 
-        consumer_config = {"key.deserializer": key_deserializer, "value.deserializer": value_deserializer,
-                           "bootstrap.servers": self.__bootstrap_servers, "group.id": self.__kafka_consumer_group_id,
-                           "auto.offset.reset": "earliest", "enable.auto.commit": False,
-                           "on_commit": self.__commit_offsets_callback}
+        consumer_config = {
+            "key.deserializer": key_deserializer,
+            "value.deserializer": value_deserializer,
+            "bootstrap.servers": self.__bootstrap_servers,
+            "group.id": self.__kafka_consumer_group_id,
+            "auto.offset.reset": "earliest",
+            "enable.auto.commit": False,
+            "on_commit": self.__commit_offsets_callback,
+        }
         self.__consumer = DeserializingConsumer(consumer_config)
 
     def fetch_deserialization_schema(self, serializer_type, subject_name):
@@ -118,9 +123,9 @@ class KafkaConsumer:
             self.__last_known_offsets[topic] = {}
 
     def __update_partition_of_message(self, msg):
-        self.__last_known_offsets[msg.topic()][msg.partition()] = TopicPartition(msg.topic(),
-                                                                                 msg.partition(),
-                                                                                 msg.offset())
+        self.__last_known_offsets[msg.topic()][msg.partition()] = TopicPartition(
+            msg.topic(), msg.partition(), msg.offset()
+        )
 
     def get_last_known_offsets(self):
         return self.__last_known_offsets.copy()
@@ -128,7 +133,8 @@ class KafkaConsumer:
     def handle_offset_commits(self, asynchronous=True):
         list_to_commit = self.__convert_control_offset_dictionary_to_list()
         self.__logger.info(
-            f"After {self.messages_processed} messages this is the list of offsets being commited: {list_to_commit}")
+            f"After {self.messages_processed} messages this is the list of offsets being commited: {list_to_commit}"
+        )
         self.__consumer.commit(offsets=list_to_commit, asynchronous=asynchronous)
 
     def __convert_control_offset_dictionary_to_list(self):

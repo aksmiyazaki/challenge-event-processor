@@ -11,7 +11,8 @@ from event_processor.main import (
     main_loop,
     fetch_message_from_kafka,
     transform_message_to_target_consumer_service,
-    send_message_to_downstream_service_topic, build_contextual_delivered_message_callback,
+    send_message_to_downstream_service_topic,
+    build_contextual_delivered_message_callback,
 )
 
 

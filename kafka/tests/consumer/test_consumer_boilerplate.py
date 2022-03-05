@@ -34,7 +34,7 @@ def built_object():
 
 def test_successfully_initialize(built_object):
     with mock.patch(
-            "kafka.consumer.consumer_boilerplate.DeserializingConsumer", autospec=True
+        "kafka.consumer.consumer_boilerplate.DeserializingConsumer", autospec=True
     ) as ConsumerMock, mock.patch(
         "kafka.consumer.consumer_boilerplate.SchemaRegistryClient", autospec=True
     ) as SchemaRegistryMock:
@@ -81,7 +81,7 @@ def test_fetch_string_deserialization_schema(built_object):
 
 def test_build_string_deserializer(built_object):
     with mock.patch(
-            "kafka.consumer.consumer_boilerplate.StringDeserializer", autospec=True
+        "kafka.consumer.consumer_boilerplate.StringDeserializer", autospec=True
     ) as mock_string_deserializer:
         built_object.build_deserializer(SupportedDeserializers.STRING_DESERIALIZER, None)
         mock_string_deserializer.assert_called_once()
@@ -89,7 +89,7 @@ def test_build_string_deserializer(built_object):
 
 def test_build_avro_serializer(built_object):
     with mock.patch(
-            "kafka.consumer.consumer_boilerplate.AvroDeserializer", autospec=True
+        "kafka.consumer.consumer_boilerplate.AvroDeserializer", autospec=True
     ) as mock_avro_deserializer, mock.patch.object(
         built_object, "_KafkaConsumer__schema_registry_client"
     ) as mocked_schema_registry:
@@ -126,9 +126,7 @@ def test_fails_building_avro_serializer_with_empty_schema_str(built_object):
 
 
 def test_default_poll(built_object):
-    with mock.patch.object(
-            built_object, "_KafkaConsumer__consumer"
-    ) as mocked_consumer, mock.patch.object(
+    with mock.patch.object(built_object, "_KafkaConsumer__consumer") as mocked_consumer, mock.patch.object(
         built_object, "_KafkaConsumer__on_flight_message_queue"
     ) as mocked_queue:
         mocked_msg = Mock()
@@ -142,9 +140,7 @@ def test_default_poll(built_object):
 
 
 def test_default_poll(built_object):
-    with mock.patch.object(
-            built_object, "_KafkaConsumer__consumer"
-    ) as mocked_consumer:
+    with mock.patch.object(built_object, "_KafkaConsumer__consumer") as mocked_consumer:
         mocked_msg = Mock()
         mocked_msg.error.return_value = "something"
         mocked_consumer.poll.return_value = mocked_msg
@@ -154,9 +150,7 @@ def test_default_poll(built_object):
 
 
 def test_terminate(built_object):
-    with mock.patch.object(
-        built_object, "_KafkaConsumer__consumer"
-    ) as mocked_consumer:
+    with mock.patch.object(built_object, "_KafkaConsumer__consumer") as mocked_consumer:
         mocked_handle_commits = Mock()
         built_object.handle_offset_commits = mocked_handle_commits
         built_object.terminate()
@@ -166,9 +160,7 @@ def test_terminate(built_object):
 
 def test_signalize_message_processed_without_offset_commit(built_object):
     expected_topic_partition = TopicPartition("dummy.topic", 1, 42)
-    with mock.patch.object(
-            built_object, "_KafkaConsumer__on_flight_message_queue"
-    ) as mocked_queue:
+    with mock.patch.object(built_object, "_KafkaConsumer__on_flight_message_queue") as mocked_queue:
         mocked_msg = Mock()
         mocked_msg.topic.return_value = "dummy.topic"
         mocked_msg.partition.return_value = 1
@@ -189,9 +181,7 @@ def test_signalize_message_processed_without_offset_commit(built_object):
 
 def test_signalize_message_processed_with_offset_commit(built_object):
     expected_topic_partition = TopicPartition("dummy.topic", 1, 42)
-    with mock.patch.object(
-            built_object, "_KafkaConsumer__on_flight_message_queue"
-    ) as mocked_queue:
+    with mock.patch.object(built_object, "_KafkaConsumer__on_flight_message_queue") as mocked_queue:
         mocked_msg = Mock()
         mocked_msg.topic.return_value = "dummy.topic"
         mocked_msg.partition.return_value = 1
@@ -215,10 +205,8 @@ def test_signalize_message_processed_with_offset_commit(built_object):
 
 def test_handle_offset_commits(built_object):
     with mock.patch.object(
-            built_object, "_KafkaConsumer__last_known_offsets"
-    ) as mocked_last_offsets, mock.patch.object(
-            built_object, "_KafkaConsumer__consumer"
-    ) as mocked_consumer:
+        built_object, "_KafkaConsumer__last_known_offsets"
+    ) as mocked_last_offsets, mock.patch.object(built_object, "_KafkaConsumer__consumer") as mocked_consumer:
         p1 = TopicPartition("dummy.topic", 1, 42)
         p2 = TopicPartition("dummy.topic", 2, 666)
         mocked_last_offsets.items.return_value = {"dummy.topic": {1: p1, 2: p2}}.items()
@@ -227,4 +215,3 @@ def test_handle_offset_commits(built_object):
         mocked_consumer.commit.assert_called_once()
         assert mocked_consumer.commit.call_args_list[0][1]["offsets"][0].offset == 43
         assert mocked_consumer.commit.call_args_list[0][1]["offsets"][1].offset == 667
-

@@ -84,7 +84,7 @@ class ProducerConfiguration:
             dest="log_level",
             default=logging.DEBUG,
             type=lambda x: getattr(logging, x),
-            help="Log Level: INFO, DEBUG, ERROR, CRITICAL"
+            help="Log Level: INFO, DEBUG, ERROR, CRITICAL",
         )
 
         parsed_args = parser.parse_args(args_list)
