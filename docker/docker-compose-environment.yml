@@ -55,7 +55,7 @@ services:
     command: >
       sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
              sleep 60 && 
-             python ./dummy_producer/main.py -log_level DEBUG -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type FINANCE -origin_service_id producer-1 -list_of_destinations MARKETING LOGISTICS -amount_of_messages 2000 -sleep_between_messages_in_seconds 1"
+             python ./dummy_producer/main.py -log_level DEBUG -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type FINANCE -origin_service_id producer-1 -list_of_destinations MARKETING LOGISTICS -amount_of_messages 100 -sleep_between_messages_in_seconds 1"
 
   producer-2:
     depends_on:
@@ -65,5 +65,17 @@ services:
     command: >
       sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
              sleep 60 && 
-             python ./dummy_producer/main.py -log_level DEBUG -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type AUDITING -origin_service_id producer-2 -list_of_destinations FINANCE LOGISTICS -amount_of_messages 2000 -sleep_between_messages_in_seconds 1"
-
+             python ./dummy_producer/main.py -log_level DEBUG -bootstrap_server kafka-cluster:9092 -schema_registry_url http://kafka-cluster:8081 -target_topic producer.to.processor -origin_service_type AUDITING -origin_service_id producer-2 -list_of_destinations FINANCE LOGISTICS -amount_of_messages 100 -sleep_between_messages_in_seconds 1"
+  
+  kowl:
+    image: quay.io/cloudhut/kowl:latest
+    restart: on-failure
+    hostname: kowl
+    volumes:
+    - ./kafkakowlconfig.yaml:/etc/kowl/config.yaml
+    ports:
+    - "8080:8080"
+    entrypoint: ./kowl --config.filepath=/etc/kowl/config.yaml
+    depends_on:
+      kafka-cluster:
+        condition: service_healthy
