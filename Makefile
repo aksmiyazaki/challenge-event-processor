@@ -5,6 +5,8 @@ help:
 	$(info make lint: Reformats code according to a standard (runs black))
 	$(info make local-docker-compose-spinup: spins a docker environment locally. Spins just kafka / schema registry)
 	$(info make local-docker-compose-teardown: tears down the environment spinned in the command above)
+	$(info make local-docker-compose-panda-spinup: spins a docker environment locally. Spins redpanda environment)
+	$(info make local-docker-compose-panda-teardown: tears down the environment spinned in the command above)
 	$(info make local-setup: installs python dependencies for development. Doing this in a virtual environment is recommended)
 	$(info make local-generate-classes-from-avro-schemas: Generates classes from avro schemas.)
 	$(info make local-register-schemas: register schemas in the local docker compose kafka.)
@@ -12,6 +14,7 @@ help:
 	$(info make dockerized-register-schemas: register schemas in the docker compose environment.)
 	$(info make build-docker-custom-images: builds docker custom images.)
 	$(info make run-dockerized-environment: THIS IS PROBABLY WHAT YOU WANT. Builds custom images and runs an environment with kafka, 2 producers and 1 event processor)
+	$(info make run-dockerized-environment-redpanda: Builds custom images and runs an environment with redpanda, 2 producers and 1 event processor)
 
 
 .PHONY: local-docker-compose-spinup
@@ -21,6 +24,14 @@ local-docker-compose-spinup:
 .PHONY: local-docker-compose-teardown
 local-docker-compose-teardown:
 	docker-compose -f ./docker/docker-compose-local-dev.yml down
+
+.PHONY: local-docker-compose-panda-spinup
+local-docker-compose-panda-spinup:
+	docker-compose -f ./docker/docker-compose-redpanda-local-dev.yml up -d
+
+.PHONY: local-docker-compose-panda-teardown
+local-docker-compose-panda-teardown:
+	docker-compose -f ./docker/docker-compose-redpanda-local-dev.yml down
 
 .PHONY: local-setup
 local-setup:
@@ -49,6 +60,10 @@ build-docker-custom-images:
 .PHONY: run-dockerized-environment
 run-dockerized-environment: build-docker-custom-images
 	docker-compose -f docker/docker-compose-environment.yml up
+
+.PHONY: run-dockerized-environment-redpanda
+run-dockerized-environment-redpanda: build-docker-custom-images
+	docker-compose -f docker/docker-compose-environment-redpanda.yml up
 
 .PHONY: local-generate-classes-from-avro-schemas
 local-generate-classes-from-avro-schemas:

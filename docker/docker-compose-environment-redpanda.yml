@@ -1,0 +1,94 @@
+version: '3.7'
+services:
+  redpanda:
+    command:
+      - redpanda
+      - start
+      - --smp
+      - '1'
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --node-id
+      - '0'
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr 127.0.0.1:8082
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+    image: docker.vectorized.io/vectorized/redpanda:v21.11.12
+    container_name: redpanda
+    ports:
+      - 8081:8081
+      - 9092:9092
+      - 29092:29092
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://redpanda:8081/schemas/types" ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+
+  kafka-create-resources:
+      image: custom-kafka-resource-creator
+      depends_on:
+        redpanda:
+          condition: service_healthy
+      environment:
+        SCHEMA_REGISTRY_URL: http://redpanda:8081
+  
+  kafka-create-topics:
+    image: landoop/fast-data-dev:latest
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    command: > 
+        sh -c "sleep 10 &&
+               kafka-topics --create --bootstrap-server redpanda:29092 --topic producer.to.processor --replication-factor 1 --partitions 3 &&
+               kafka-topics --create --bootstrap-server redpanda:29092 --topic processor.to.marketing --replication-factor 1 --partitions 3 &&
+               kafka-topics --create --bootstrap-server redpanda:29092 --topic processor.to.finance --replication-factor 1 --partitions 3 &&
+               kafka-topics --create --bootstrap-server redpanda:29092 --topic processor.to.logistics --replication-factor 1 --partitions 3"
+
+  event-processor-1:
+      depends_on:
+        redpanda:
+          condition: service_healthy
+      image: custom-producer
+      command: >
+        sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
+               sleep 45 && 
+               python ./event_processor/main.py -log_level DEBUG -processor_id event-processor-1 -bootstrap_server redpanda:29092 -schema_registry_url http://redpanda:8081 -source_topic producer.to.processor -batch_size_to_commit_offsets 20 -destination_configurations '{\"FINANCE\": {\"output_topic\": \"processor.to.finance\", \"output_subject\": \"processor.to.consumer-value\"}, \"MARKETING\": {\"output_topic\": \"processor.to.marketing\", \"output_subject\": \"processor.to.consumer-value\"}, \"LOGISTICS\": {\"output_topic\": \"processor.to.logistics\", \"output_subject\": \"processor.to.consumer-value\"}}' -group_id event_processor"
+
+  producer-1:
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    image: custom-producer
+    command: >
+      sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
+             sleep 60 && 
+             python ./dummy_producer/main.py -log_level DEBUG -bootstrap_server redpanda:29092 -schema_registry_url http://redpanda:8081 -target_topic producer.to.processor -origin_service_type FINANCE -origin_service_id producer-1 -list_of_destinations MARKETING LOGISTICS -amount_of_messages 100 -sleep_between_messages_in_seconds 1"
+
+  producer-2:
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    image: custom-producer
+    command: >
+      sh -c "echo Sleeping for a while to wait for resource creation, look at the docs about this sleep :sad: &&
+             sleep 60 && 
+             python ./dummy_producer/main.py -log_level DEBUG -bootstrap_server redpanda:29092 -schema_registry_url http://redpanda:8081 -target_topic producer.to.processor -origin_service_type AUDITING -origin_service_id producer-2 -list_of_destinations FINANCE LOGISTICS -amount_of_messages 100 -sleep_between_messages_in_seconds 1"
+
+  kowl:
+    image: quay.io/cloudhut/kowl:latest
+    restart: on-failure
+    hostname: kowl
+    volumes:
+    - ./kowlconfig.yaml:/etc/kowl/config.yaml
+    ports:
+    - "8080:8080"
+    entrypoint: ./kowl --config.filepath=/etc/kowl/config.yaml
+    depends_on:
+      redpanda:
+        condition: service_healthy
