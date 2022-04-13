@@ -33,6 +33,14 @@ local-docker-compose-panda-spinup:
 local-docker-compose-panda-teardown:
 	docker-compose -f ./docker/docker-compose-redpanda-local-dev.yml down
 
+.PHONY: local-docker-compose-pulsar-spinup
+local-docker-compose-pulsar-spinup:
+	docker-compose -f ./docker/docker-compose-pulsar-local-dev.yml up -d
+
+.PHONY: local-docker-compose-pulsar-teardown
+local-docker-compose-pulsar-teardown:
+	docker-compose -f ./docker/docker-compose-pulsar-local-dev.yml down
+
 .PHONY: local-setup
 local-setup:
 	pip install -r requirements-development.txt
